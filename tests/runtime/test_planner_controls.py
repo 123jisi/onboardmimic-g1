@@ -58,10 +58,10 @@ class PlannerTest(unittest.TestCase):
     def test_pose_stationary_requirement_and_stop_return(self):
         self.activate();self.g.pose_reader=Mock()
         self.g.pose_reader.snapshot.return_value={'ready':True,'packet':b'pose','reason':''}
-        self.g.ingest('g1_debug',{'encoder_mode':0,'play':True})
+        self.g.ingest('g1_debug',{'encoder_mode':0,'motion_name':'planner_motion','play':True})
         with self.assertRaises(ValueError):self.command('select_pose')
         self.now+=.6;self.refresh();self.g.tick()
-        self.g.ingest('g1_debug',{'encoder_mode':0,'play':True})
+        self.g.ingest('g1_debug',{'encoder_mode':0,'motion_name':'planner_motion','play':True})
         self.assertTrue(self.g.status()['stationary']);self.command('select_pose')
         with self.assertRaises(ValueError):self.g.request('/api/control',self.packet(move='left'))
         self.g.request('/api/control',self.packet(stop=True))

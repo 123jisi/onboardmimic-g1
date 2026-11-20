@@ -1,5 +1,7 @@
 # OnboardMimic: first deployment on G1
 
+For a fresh clone of OnboardMimic G1, start with the [online source installer](SOURCE_BUILD.md). The prebuilt wizard below documents the upstream v0.1.0 package.
+
 English · [简体中文](DEPLOYMENT_zh.md)
 
 **Install → Configure communication → Open console → Connect services → Prepare posture → Start SONIC.**

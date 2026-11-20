@@ -93,7 +93,9 @@ class GuardTest(unittest.TestCase):
         pid, terminal = pty.fork()
         if pid == 0:
             try:
-                support.run([sys.executable, '-c', 'import os; os.close(os.open("/dev/tty", os.O_RDWR))'])
+                # This checks terminal inheritance, independently of live robot services.
+                with patch.object(support, "active_controllers", return_value=[]):
+                    support.run([sys.executable, '-c', 'import os; os.close(os.open("/dev/tty", os.O_RDWR))'])
                 os._exit(0)
             except BaseException:
                 os._exit(1)
@@ -139,6 +141,7 @@ class GuardTest(unittest.TestCase):
             root = Path(tmp)
             (root/'prebuilt_manifest.json').write_text('{}')
             with patch.object(wizard, 'ROOT', root), patch.object(Path, 'home', return_value=root), \
+                 patch.object(support, 'active_controllers', return_value=[]), \
                  patch.object(wizard.os, 'geteuid', return_value=1000), \
                  patch.object(wizard, 'find_ros', return_value=(Path('/ROS'), Path('/WS'))), \
                  patch.object(wizard.network, 'detect', return_value='eth1'), \

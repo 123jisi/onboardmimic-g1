@@ -1,0 +1,21 @@
+# ARM64 CPython 3.8 / JetPack 5 runtime and transitive wheel pins.
+# CUDA and TensorRT are inherited from the qualified factory installation.
+-r requirements.txt
+scipy==1.10.1
+coloredlogs==15.0.1
+humanfriendly==10.0
+flatbuffers==25.12.19
+packaging==24.2
+protobuf==5.29.6
+sympy==1.13.3
+mpmath==1.3.0
+tqdm==4.67.1
+fsspec==2024.10.0
+pyyaml==6.0.2
+requests==2.32.4
+certifi==2025.10.5
+urllib3==2.2.3
+idna==3.10
+charset-normalizer==3.4.4
+filelock==3.16.1
+typing_extensions==4.13.2

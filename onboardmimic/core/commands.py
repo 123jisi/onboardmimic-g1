@@ -27,7 +27,7 @@ class PlannerLease:
         self.speed = self.default_speed
 
     def accept(self, x, now):
-        allowed = {'client', 'seq', 'epoch', 'ticket', 'move', 'turn', 'speed', 'stop'}
+        allowed = {'client', 'seq', 'epoch', 'ticket', 'move', 'turn', 'speed', 'stop', 'actor', 'operator_generation', 'expected_revision'}
         if set(x) - allowed:
             raise ValueError('不支持的 Planner 参数')
         client, seq = x.get('client'), x.get('seq')

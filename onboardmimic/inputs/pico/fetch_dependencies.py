@@ -4,8 +4,11 @@ from pathlib import Path
 
 def main():
     root=Path(__file__).resolve().parent
-    for item in json.loads((root/'dependencies.json').read_text())['artifacts']:
-        dest=root/'vendor'/item['file'];dest.parent.mkdir(exist_ok=True)
+    items=[]
+    for manifest in ('dependencies.json','build_wheels.json'):
+        items.extend(json.loads((root/manifest).read_text())['artifacts'])
+    for item in items:
+        dest=root/'vendor'/item['file'];dest.parent.mkdir(parents=True,exist_ok=True)
         if not dest.exists():
             tmp=dest.with_suffix(dest.suffix+'.part')
             with urllib.request.urlopen(item['url'],timeout=120) as r,tmp.open('wb') as out:

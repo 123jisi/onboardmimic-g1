@@ -1,6 +1,6 @@
 """Builders for ZMQ wire-format messages on the 'command', 'planner', and 'pose' topics.
 
-Message layout: [topic_bytes][1024-byte JSON header][packed binary payload].
+Message layout: [topic_bytes][1280-byte JSON header][packed binary payload].
 The header describes field names, dtypes, and shapes so the receiver can
 deserialize without out-of-band schema knowledge.
 """
@@ -172,10 +172,10 @@ def build_planner_message(
 def pack_pose_message(pose_data: dict, topic: str = "pose", version: int = 3) -> bytes:
     """
     Pack pose/action data into ZMQ message format:
-    [topic_prefix][1024-byte JSON header][concatenated binary fields]
+    [topic_prefix][1280-byte JSON header][concatenated binary fields]
 
     This is a general-purpose function for packing numpy arrays into ZMQ messages.
-    Supports protocol versions 3 and 4.
+    Supports joint v1, SMPL v2/v3, and token v4.
 
     Args:
         pose_data: Dictionary containing numpy arrays to send
@@ -227,7 +227,7 @@ def pack_pose_message(pose_data: dict, topic: str = "pose", version: int = 3) ->
     # Build header using common utility
     header_bytes = _build_header(fields, version=version, count=1)
 
-    # Pack message: [topic][1024-byte header][binary data]
+    # Pack message: [topic][1280-byte header][binary data]
     topic_bytes = topic.encode("utf-8")
     data_bytes = b"".join(binary_data)
 

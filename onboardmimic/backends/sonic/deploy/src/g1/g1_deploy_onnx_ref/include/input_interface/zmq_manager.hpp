@@ -264,6 +264,7 @@ class ZMQManager : public InputInterface {
 
             if (new_mode == ManagedMode::PLANNER) {
               std::cout << "[ZMQManager] Switched to: PLANNER mode (safety reset)" << std::endl;
+              std::lock_guard<std::mutex> planner_lock(planner_mutex_);
               if (latest_planner_message_.valid) {
                 constexpr auto PLANNER_MESSAGE_TIMEOUT = std::chrono::milliseconds(100);
                 auto time_since_last_planner = std::chrono::steady_clock::now() - latest_planner_message_.timestamp;

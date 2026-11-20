@@ -16,7 +16,7 @@ SOURCES = (
 )
 
 
-def checkout(base, name, url, revision):
+def checkout(base, name, url, revision, mirrors=None):
     path = base/name
     if not path.exists():
         run(['git', 'init', path])
@@ -25,9 +25,62 @@ def checkout(base, name, url, revision):
         raise RuntimeError('Existing source has a different origin: '+str(path))
     if subprocess.check_output(['git', '-C', path, 'status', '--porcelain'], text=True).strip():
         raise RuntimeError('Existing source has local changes; preserved: '+str(path))
-    run(['git', '-C', path, 'fetch', '--depth', '1', 'origin', revision])
+    source = str(mirrors/(name+'.git')) if mirrors is not None else 'origin'
+    run(['git', '-C', path, 'fetch', '--depth', '1', source, revision])
     run(['git', '-C', path, 'checkout', '--detach', 'FETCH_HEAD'])
     return path
+
+
+
+def build_workspace(workspace, ros, mirrors=None):
+    source_root = workspace/'src'
+    source_root.mkdir(exist_ok=True)
+    for spec in SOURCES:
+        checkout(source_root, *spec, mirrors=mirrors)
+    # Cyclone 0.10.2 is built without a sourced ROS environment, as Unitree requires.
+    env = {k: v for k, v in os.environ.items() if k in ('HOME', 'USER', 'LOGNAME', 'TERM', 'http_proxy', 'https_proxy', 'no_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY')}
+    env.update(PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', LANG='C.UTF-8', MAKEFLAGS='-j2')
+    run(['colcon', 'build', '--base-paths', 'src/cyclonedds', '--executor', 'sequential', '--cmake-args', '-DBUILD_TESTING=OFF'], cwd=str(workspace), env=env)
+    script = '''source /opt/ros/foxy/setup.bash && source install/setup.bash &&
+exec colcon build --base-paths src/rmw_cyclonedds/rmw_cyclonedds_cpp \\
+ src/unitree_ros2/cyclonedds_ws/src/unitree/unitree_hg \\
+ src/unitree_ros2/cyclonedds_ws/src/unitree/unitree_api \\
+ --executor sequential --cmake-args -DBUILD_TESTING=OFF'''
+    run(['bash', '--noprofile', '--norc', '-c', script], cwd=str(workspace), env=env)
+    ok, message = probe_ros(ros, workspace/'install/setup.bash')
+    if not ok:
+        raise RuntimeError(message)
+
+def install_apt(extra=()):
+    if not Path('/opt/ros/foxy/setup.bash').exists():
+        # Official Foxy repository recipe; retain an existing ROS apt source.
+        sources = [Path('/etc/apt/sources.list')]+list(Path('/etc/apt/sources.list.d').glob('*'))
+        configured = any(p.is_file() and 'packages.ros.org/ros2/ubuntu' in p.read_text(errors='replace') for p in sources)
+        if not configured:
+            run(['sudo', 'apt-get', 'update'])
+            run(['sudo', 'apt-get', 'install', '-y', 'ca-certificates', 'software-properties-common'])
+            run(['sudo', 'add-apt-repository', '-y', 'universe'])
+            with tempfile.TemporaryDirectory() as tmp:
+                key = Path(tmp)/'ros.key'
+                with urllib.request.urlopen('https://raw.githubusercontent.com/ros/rosdistro/master/ros.key', timeout=30) as stream:
+                    key.write_bytes(stream.read())
+                source = Path(tmp)/'ros2-onboardmimic.list'
+                # Foxy's official apt endpoint uses HTTP; authenticity is
+                # verified by apt using the ROS key fetched over HTTPS above.
+                source.write_text('deb [arch=arm64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main\n')
+                run(['sudo', 'install', '-m', '0644', key, '/usr/share/keyrings/ros-archive-keyring.gpg'])
+                run(['sudo', 'install', '-m', '0644', source, '/etc/apt/sources.list.d/ros2-onboardmimic.list'])
+    run(['sudo', 'apt-get', 'update'])
+    packages = ('ros-foxy-ros-base', 'ros-foxy-rmw-cyclonedds-cpp',
+                'ros-foxy-rosidl-generator-dds-idl', 'ros-foxy-geometry-msgs',
+                'python3-colcon-common-extensions', 'python3-venv', 'git',
+                'cmake', 'build-essential', 'libssl-dev', 'libyaml-cpp-dev')
+    command = ['apt-get', '--no-remove', '--no-upgrade', 'install', *packages, *extra]
+    plan = subprocess.check_output([command[0], '-s', *command[1:]], text=True, env=dict(os.environ, LC_ALL='C'))
+    for line in plan.splitlines():
+        if line.startswith(('Inst nvidia-', 'Inst cuda-', 'Inst libnvinfer', 'Inst libcudnn')):
+            raise RuntimeError('APT would change the factory CUDA/TensorRT stack: '+line)
+    run(['sudo', command[0], '-y', *command[1:]])
 
 
 def main():
@@ -48,45 +101,8 @@ def main():
     workspace.mkdir(parents=True, exist_ok=True)
     marker.write_text('Pinned Unitree ROS2 dependencies; no robot executable is built.\n')
     ros = Path('/opt/ros/foxy/setup.bash')
-    if not ros.exists():
-        # Official Foxy repository recipe; retain an existing ROS apt source.
-        sources = [Path('/etc/apt/sources.list')]+list(Path('/etc/apt/sources.list.d').glob('*'))
-        configured = any(p.is_file() and 'packages.ros.org/ros2/ubuntu' in p.read_text(errors='replace') for p in sources)
-        if not configured:
-            run(['sudo', 'apt-get', 'update'])
-            run(['sudo', 'apt-get', 'install', '-y', 'ca-certificates', 'software-properties-common'])
-            run(['sudo', 'add-apt-repository', '-y', 'universe'])
-            with tempfile.TemporaryDirectory() as tmp:
-                key = Path(tmp)/'ros.key'
-                with urllib.request.urlopen('https://raw.githubusercontent.com/ros/rosdistro/master/ros.key', timeout=30) as stream:
-                    key.write_bytes(stream.read())
-                source = Path(tmp)/'ros2-onboardmimic.list'
-                # Foxy's official apt endpoint uses HTTP; authenticity is
-                # verified by apt using the ROS key fetched over HTTPS above.
-                source.write_text('deb [arch=arm64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main\n')
-                run(['sudo', 'install', '-m', '0644', key, '/usr/share/keyrings/ros-archive-keyring.gpg'])
-                run(['sudo', 'install', '-m', '0644', source, '/etc/apt/sources.list.d/ros2-onboardmimic.list'])
-    run(['sudo', 'apt-get', 'update'])
-    run(['sudo', 'apt-get', 'install', '-y', '--no-upgrade', 'ros-foxy-ros-base', 'ros-foxy-rmw-cyclonedds-cpp',
-         'ros-foxy-rosidl-generator-dds-idl', 'ros-foxy-geometry-msgs', 'python3-colcon-common-extensions',
-         'python3-venv', 'git', 'cmake', 'build-essential', 'libssl-dev', 'libyaml-cpp-dev'])
-    source_root = workspace/'src'
-    source_root.mkdir(exist_ok=True)
-    for spec in SOURCES:
-        checkout(source_root, *spec)
-    # Cyclone 0.10.2 is built without a sourced ROS environment, as Unitree requires.
-    env = {k: v for k, v in os.environ.items() if k in ('HOME', 'USER', 'LOGNAME', 'TERM', 'http_proxy', 'https_proxy', 'no_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY')}
-    env.update(PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', LANG='C.UTF-8', MAKEFLAGS='-j2')
-    run(['colcon', 'build', '--base-paths', 'src/cyclonedds', '--executor', 'sequential', '--cmake-args', '-DBUILD_TESTING=OFF'], cwd=str(workspace), env=env)
-    script = '''source /opt/ros/foxy/setup.bash && source install/setup.bash &&
-exec colcon build --base-paths src/rmw_cyclonedds/rmw_cyclonedds_cpp \\
- src/unitree_ros2/cyclonedds_ws/src/unitree/unitree_hg \\
- src/unitree_ros2/cyclonedds_ws/src/unitree/unitree_api \\
- --executor sequential --cmake-args -DBUILD_TESTING=OFF'''
-    run(['bash', '--noprofile', '--norc', '-c', script], cwd=str(workspace), env=env)
-    ok, message = probe_ros(ros, workspace/'install/setup.bash')
-    if not ok:
-        raise RuntimeError(message)
+    install_apt()
+    build_workspace(workspace, ros)
     print('Dependencies built; original workspaces untouched / 依赖构建完成，原工作空间未改动。')
     print('Continue / 继续: python3 scripts/setup.py --unitree-ros-setup '+str(workspace/'install/setup.bash'))
 

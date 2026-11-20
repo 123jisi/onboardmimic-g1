@@ -1,150 +1,75 @@
-![OnboardMimic: Bring great controllers onboard. A bilingual onboard controller platform cartoon.](docs/assets/onboardmimic-platform-bilingual.png)
+# OnboardMimic G1
 
-# OnboardMimic
+OnboardMimic 是面向人形机器人的板载 S0 平台。本仓库面向宇树 G1 EDU，把 SONIC 控制器、动作导入与回放、遥操接收和桌面／手机控制台部署在机器人本机。机器人通过本机 ROS 2、CycloneDDS 和桥接服务与底层通信。
 
-**Bring great controllers onboard.** · **板载优秀的控制器，让它更好用**
+OnboardMimic G1 integrates NVIDIA SONIC, local motion playback and optional PICO, PN Link and BrainCo inputs on Unitree G1 EDU. Start with the [English source build guide](docs/SOURCE_BUILD.md), [architecture](docs/ARCHITECTURE.md) and [validation scope](docs/VALIDATION.md).
 
-**An Onboard S0 Platform for Humanoid Robots / 人形机器人的板载 S0 平台**
+原项目由 LambdaHumanoid 开发，作者为 [Yiming Jiang](https://iridescentjiang.github.io/)、[Yilun Chen](https://yilunchen.com/about/)（项目负责人）及 [Codex](https://openai.com/codex/)。SONIC 控制器、模型及第三方组件的归属和使用条款见[项目来源](docs/PROJECT.md)和[许可证](LICENSE)。
 
-> 🚀 **SONIC onboard today. SuperMimic is next on our roadmap.**
->
-> **SONIC 已实现板载部署，下一站计划接入 SuperMimic。**
+## 功能
 
-SONIC is our first onboard controller. Run it on your G1’s own Jetson: keep the robot’s cerebellum onboard, with JetPack 5 deployment tools, bilingual desktop/mobile consoles and PICO full-body teleoperation.
+- **核心**提供 SONIC Planner、控制器生命周期、G1 原生通信桥、状态反馈、桌面与手机控制台。操作员从控制台显式连接服务、准备姿态和启动控制器。
+- **`playback`** 启用本地动作库、CSV 回放、GMR PKL 导入和 GENMO SMPL PT、Kimodo AMASS NPZ 转换。PT 导入使用独立的 CPU Torch 环境，转换输出可以复用。[动作回放指南](docs/MOTION_PLAYBACK_zh.md) · [PT 导入指南](docs/SMPL_PT_PLAYBACK_zh.md)
+- **`pico`** 运行机器人端的 XRoboToolkit 接收容器，提供身体跟随、三点跟随、手柄输入和上身冻结模式。头显需安装匹配的发送端，并能访问 G1。
+- **`pnlink`** 用 ARM64 SDK 接收 PN Link 动捕数据，支持现场配置的有线或 Wi-Fi 链路。操作者从网页开启接收、校准和预览。
+- **`brainco`** 构建独立手部适配器，依赖厂商现有的 `brainco_hand.service`。与 Pico 或 PN Link 配合使用时前者提供扳机输入，后者支持双手标定与跟随。
 
-> SONIC 是首个板载控制器，目前支持 **Unitree G1**：让机器人的“小脑”运行在自身 Jetson 上，配套 JetPack 5 部署工具、中英文电脑/手机控制台与 PICO 全身遥操。
+仓库中的 `onboardmimic/core` 负责运行时和控制权，`onboardmimic/backends/sonic` 存放 SONIC 适配层与原生构建代码，`onboardmimic/robots/unitree_g1` 包含 G1 传输和手部适配，`onboardmimic/inputs` 与 `onboardmimic/console` 分别提供接收器和控制台。安装入口位于 `scripts/`，离线回归位于 `tests/`。
 
-https://github.com/user-attachments/assets/6afc6f3e-d37e-4cd0-8d34-da85d1bc39bf
+## 环境要求
 
-[🚀 Get started](#get-started) · [📦 Download v0.1.0](https://github.com/LambdaHumanoid/OnboardMimic/releases/tag/v0.1.0) · [🤝 Community](#community) · [🎮 Console](#consoles) · [🧩 Architecture](docs/ARCHITECTURE.md)
+- 宇树 G1 EDU，29 自由度本体，Orin NX 16 GB（ARM64）。系统为 Ubuntu 20.04、系统 Python 3.8、JetPack 5.1.1 / L4T 35.3.1、CUDA 11.4 与 TensorRT 8.5.2，需有原厂内部 DDS 直连路由。
+- 使用部署用户的终端和可用的 `systemctl --user` 会话。脚本按需调用 `sudo` 安装包及设置服务。核心安装至少预留 8 GiB，选择扩展时至少预留 12 GiB。
+- G1 需能访问 Ubuntu、ROS、GitHub、PyPI、NuGet 和 Hugging Face。Pico 另需 Docker Hub 与 Ubuntu 容器软件源。固定版本的 SONIC 原始模型合计约 865 MB，构建会另外生成引擎与缓存。
 
-## 📰 News
+## 从 GitHub 联网安装
 
-- **v0.1.0 · First aboard: SONIC.** [Prebuilt packages](https://github.com/LambdaHumanoid/OnboardMimic/releases/tag/v0.1.0) for G1 / JetPack 5, with bilingual desktop/mobile consoles for **Planner walking** and optional **PICO Pose** teleoperation. [Setup and controls](docs/CONTROL_EXTENSIONS.md).
-
-> **v0.1.0 · 首个板载控制器：SONIC。** 提供面向 G1 / JP5 的预编译安装包，配套中英文电脑和手机控制台，支持 **Planner 行走**与可选 **PICO Pose 全身遥操**。[安装与控制说明](docs/CONTROL_EXTENSIONS_zh.md)。
-
-## 📝 TODO
-
-- [ ] **Integrate SuperMimic as an onboard backend. / 接入 SuperMimic 板载后端。**
-- [ ] Support motion recording and playback. / 支持动作录制和回放。
-- [ ] Adapt SONIC’s low-latency and newer policy variants. / 适配 SONIC 的低延迟版本和更新策略。
-- [ ] Bring more controllers and robot bodies onboard. / 适配更多控制器与机器人本体。
-
-## 📡 Let your Wi-Fi take a coffee break
-
-**Onboard deployment. Easier to use. Starting with SONIC.** OnboardMimic keeps the motion-control loop off Wi-Fi. We’re starting with SONIC on G1: adapting its planner and policy to the robot’s existing JetPack 5 system and bringing deployment tools, runtime management and control interfaces together. Your laptop gets to be a remote control. Your robot gets to do its own balancing.
-
-Why does this matter? Official SONIC supports onboard deployment, but its [G1 Orin setup](https://nvlabs.github.io/GR00T-WholeBodyControl/getting_started/installation_deploy.html) requires **JetPack 6 and TensorRT 10.7**. For a G1 still on JP5, the [flashing guide](https://nvlabs.github.io/GR00T-WholeBodyControl/references/jetpack6.html) involves removing the back cover and NVMe SSD, flashing the system and module firmware, then reassembling the robot. You wanted to install software; now there is a screwdriver on the desk.
-
-Running SONIC on an external GPU computer avoids that onboard setup, but puts network latency, jitter and dropped packets in the control path. Your robot has acquired a wireless leash.
-
-With OnboardMimic’s SONIC backend, the control loop stays on the robot’s Jetson, using the supported JP5 configuration below. The laptop or phone sends commands; PICO sends body tracking. Remote commands and tracking still need a network, but the local motion-control loop no longer takes the round trip.
-
-> **实现板载部署，更好用。先从 SONIC 开始。** OnboardMimic 将运控闭环留在机器人本机，不再绕经 Wi-Fi。我们先将 SONIC 的规划器和策略适配到 G1 现有的 JetPack 5 系统，并提供配套部署工具、运行管理和操控界面。电脑负责遥控，机器人负责自身平衡。
->
-> 为什么需要这些工作？SONIC 官方支持板载部署，但其 [G1 Orin 部署指南](https://nvlabs.github.io/GR00T-WholeBodyControl/getting_started/installation_deploy.html)要求 **JetPack 6 和 TensorRT 10.7**。仍在使用 JP5 的 G1，按[刷机教程](https://nvlabs.github.io/GR00T-WholeBodyControl/references/jetpack6.html)需要拆背板、取出 NVMe SSD、刷系统和模块固件，再装回去。只是想装个运控，先拿起了螺丝刀。
->
-> 放到外部 GPU 电脑上可以免去这套板载配置，但网络延迟、抖动和丢包会进入控制链路，给机器人拴上一根“无线牵引绳”。
->
-> 使用下方支持的 JP5 配置，OnboardMimic 的 SONIC 后端让运控闭环留在机器人自身 Jetson 上。电脑和手机负责发指令，PICO 负责提供人体追踪；这些数据仍需网络传输，但本机运控闭环不再经过网络往返。
-
-SONIC is our first onboard controller, with **SuperMimic planned as the next backend** and more controllers to follow. Robot adapters, controllers and input devices are separate modules to support those integrations. The algorithms and pretrained models remain the work of their original authors. [How the platform fits together →](docs/ARCHITECTURE.md)
-
-> SONIC 是首个支持板载部署的控制器，**下一步计划接入 SuperMimic**，并陆续支持更多控制器。平台将本体、控制器和输入设备拆分，为持续接入做好准备；算法和模型归属原作者。[看看模块如何配合 →](docs/ARCHITECTURE_zh.md)
-
-<a id="get-started"></a>
-
-## 🚀 Get started / 开始使用
-
-| Component / 组件 | Current SONIC profile / 当前 SONIC 配置 |
-| --- | --- |
-| Robot / 机器人 | Unitree G1, 29-DOF body, no hand control / 29 自由度本体，不含手部控制 |
-| Computer / 机载计算机 | Jetson Orin NX **16 GB** |
-| System / 系统 | JetPack 5 · Ubuntu 20.04 · L4T **35.3.1** |
-| GPU software / GPU 软件 | CUDA **11.4** · TensorRT **8.5.2** |
-
-**Start with your coding agent:** give it this repository and ask it to check your hardware/software versions, download the v0.1.0 packages, follow the installation guide, configure communication, and open the console. For manual setup:
-
-1. Download the three archives and checksums from [v0.1.0](https://github.com/LambdaHumanoid/OnboardMimic/releases/tag/v0.1.0), then follow the [package guide](docs/PREBUILT.md) to verify and extract them.
-2. Run **`python3 scripts/setup.py`** in `OnboardMimic/`. The wizard installs dependencies, checks inference, configures communication and opens the idle console. Choose LAN access for phones; PICO is optional.
-3. Open the console: **Connect services → Prepare posture → Start controller.** Installing or opening the page does not start SONIC.
-
-> **直接把仓库交给你的 coding agent。** 让它先核对软硬件版本，再下载 v0.1.0 安装包，按指南完成安装、通信配置和控制台启动。手动安装：
->
-> 1. 从 [v0.1.0](https://github.com/LambdaHumanoid/OnboardMimic/releases/tag/v0.1.0) 下载三个压缩包和校验值，按[预编译安装指南](docs/PREBUILT_zh.md)校验并解压。
-> 2. 在 `OnboardMimic/` 中运行 **`python3 scripts/setup.py`**。向导安装依赖、检查推理、配置通信并启动空闲控制台；手机访问选择 LAN，PICO 可选。
-> 3. 打开控制台，手动执行 **连接服务 → 准备姿态 → 启动控制器**。安装或打开页面不会启动 SONIC。
-
-
-The release has completed the full deployment workflow on a physical G1, including inference checks, console access, reboot readiness and operator motion acceptance. [Validation scope](docs/VALIDATION.md). Other robot bodies and environments require separate adaptation. For custom builds, use the [source guide](docs/SOURCE_BUILD.md).
-
-> 已在 G1 真机上完成全流程部署验证，包括推理检查、控制台访问、开机就绪和现场运动验收。[验证范围](docs/VALIDATION.md)。其他本体与环境需要单独适配；定制构建见[源码指南](docs/SOURCE_BUILD_zh.md)。
-
-<a id="community"></a>
-
-## 🤝 Community validation / 社区共建
-
-Our current adaptation and real-robot validation cover the mainstream G1 EDU factory configuration listed above: **JetPack 5.1.1 / L4T 35.3.1**. If your G1 EDU runs a different JetPack or L4T version, we welcome your help adapting and validating OnboardMimic on your own robot.
-
-Share your hardware/software versions, any required changes, and test results through an [Issue](https://github.com/LambdaHumanoid/OnboardMimic/issues) or [Pull Request](https://github.com/LambdaHumanoid/OnboardMimic/pulls), using the [validation scope](docs/VALIDATION.md) as a reference. After successful real-robot validation and review of the results, we can add your configuration to the **verified configurations list**, recording the exact versions, tested features and contributor credit.
-
-> 目前我们仅适配并完成了上述主流 G1 EDU 原厂配置的真机验证：**JetPack 5.1.1 / L4T 35.3.1**。如果你的 G1 EDU 使用其他 JetPack 或 L4T 版本，欢迎在自己的真机上参与适配与验证，一起扩大项目的支持范围。
->
-> 欢迎通过 [Issue](https://github.com/LambdaHumanoid/OnboardMimic/issues) 或 [Pull Request](https://github.com/LambdaHumanoid/OnboardMimic/pulls) 分享软硬件版本、必要的适配修改和测试结果，并参考现有的[验证范围](docs/VALIDATION.md)。真机验证通过并确认结果后，我们可以将该配置加入**已验证版本列表**，注明具体版本、已验证功能与贡献者。
-
-<a id="consoles"></a>
-
-## 🎮 Desktop & mobile consoles / 电脑与手机控制台
-
-![OnboardMimic English Planner console with keyboard controls, speed setting, PICO Pose tab and emergency stop](docs/assets/console-planner-en.png)
-
-*English UI, captured with a mock backend. Switch languages using **语言 / Language**. / 英文界面，使用模拟后端截图。通过 **语言 / Language** 切换中英文。*
-
-- **Planner:** WASD / arrow keys to walk, Q / E to turn. Hold to move, release to stop; adjust the target speed on the page.
-- **Mobile:** landscape dual joysticks—walk on the left, turn on the right. [Phone/LAN setup](docs/CONTROL_EXTENSIONS.md#lan-access).
-- **PICO Pose:** preview body tracking, then explicitly switch into full-body teleoperation. [Headset setup](docs/CONTROL_EXTENSIONS.md#pico-setup).
-
-> - **Planner：** WASD / 方向键行走，Q / E 转向；按住移动，松开停止，目标速度在页面调节。
-> - **手机：** 横屏双摇杆，左走右转。[手机与局域网配置](docs/CONTROL_EXTENSIONS_zh.md#lan-access)。
-> - **PICO Pose：** 先预览人体追踪，再手动切入全身遥操。[头显配置](docs/CONTROL_EXTENSIONS_zh.md#pico-setup)。
-
-### Open the console / 打开控制台
-
-After setup, the console and API are ready at boot. Connect services, prepare posture and start the controller manually. With LAN access configured, open **`http://ROBOT_IP:8769/`** on your laptop or **`http://ROBOT_IP:8769/remote`** on your phone. Local-only access uses an SSH tunnel on your laptop:
-
-> 完成配置后，控制台和后台开机就绪；连接服务、准备姿态和启动控制器均由用户手动操作。配置 LAN 访问后，电脑打开 **`http://ROBOT_IP:8769/`**，手机打开 **`http://ROBOT_IP:8769/remote`**；仅本机访问时在电脑使用 SSH 隧道。
+在准备做首次部署的 G1 上，确认控制器和桥接服务已停止，以普通用户执行。
 
 ```bash
-ssh -N -L 8769:127.0.0.1:8769 USER@ROBOT_HOST
+git clone https://github.com/123jisi/onboardmimic-g1.git OnboardMimic
+cd OnboardMimic
+
+python3 scripts/setup_g1_online.py --check
+python3 scripts/setup_g1_online.py
 ```
 
-Keep the tunnel open and visit **http://127.0.0.1:8769/**. / 保持隧道运行，在电脑浏览器打开上述地址。
+`--check` 只检查平台、磁盘、内部路由和服务冲突。安装器配置签名验证的 APT 依赖，建立 `.venv` 和固定版本的 ROS 2 工作空间，编译 SONIC 策略程序和 G1 桥接，下载并核对 NVIDIA 模型，然后生成本机 TensorRT FP32 引擎，完成数值校验和缓存核对。校验通过后才安装服务并启动空闲 API 和网页。
 
-Remote walking requests expire when updates stop; the local controller keeps running. Emergency stop terminates the controller. Neither behavior guarantees the robot remains standing. / 遥控断连后行走请求会到期，本机控制器继续运行；急停会终止控制器。这两种机制都不保证机器人保持站立。
+默认网页仅监听回环。电脑上可执行 `ssh -N -L 8769:127.0.0.1:8769 DEPLOY_USER@G1_HOST`，访问 [电脑界面](http://127.0.0.1:8769/) 或 [移动界面](http://127.0.0.1:8769/remote)。需要手机直接访问时，首次安装给预检和安装命令都加 `--console-access lan`，随后在同一可信局域网打开 `http://G1_HOST:8769/remote`，把 `G1_HOST` 换成机器人实际管理地址。
 
-## 📚 Documentation / 文档
+### 可选功能
 
-[Prebuilt packages](docs/PREBUILT.md) · [Source build](docs/SOURCE_BUILD.md) · [Deployment](docs/DEPLOYMENT.md) · [Planner & PICO](docs/CONTROL_EXTENSIONS.md) · [Upgrade](docs/UPGRADE.md) · [Architecture](docs/ARCHITECTURE.md) · [Validation](docs/VALIDATION.md)
+在首次预检和安装时使用同一组参数。以下命令选用回放与 Pico。
 
-[预编译安装](docs/PREBUILT_zh.md) · [源码构建](docs/SOURCE_BUILD_zh.md) · [首次部署](docs/DEPLOYMENT_zh.md) · [Planner 与 PICO](docs/CONTROL_EXTENSIONS_zh.md) · [升级与回退](docs/UPGRADE_zh.md) · [架构说明](docs/ARCHITECTURE_zh.md) · [验证范围](docs/VALIDATION.md)
+```bash
+python3 scripts/setup_g1_online.py --check --features playback,pico
+python3 scripts/setup_g1_online.py --features playback,pico
+```
 
-## 🙏 Acknowledgements / 致谢
+- **回放**将自行取得的原始动作放到 `var/gmr/`、`var/smpl/` 或 `var/kimodo/`，在网页按格式转换。动作库使用 `var/motions/`。从可信来源获取动作并核对格式、帧率和参考姿态。
+- **Pico**安装器从 XRoboToolkit 官方发布下载经校验的 ARM64 服务和绑定，构建接收容器。按头显发送端要求将 TCP 目标指向 G1 的管理地址和端口 `63901`。需要外置追踪器时，在本机 `onboardmimic/inputs/pico/devices.json` 配置角色。
+- **PN Link**把下方示例另存为本机文件并替换两个地址，使用 `--features pnlink --pn-config /path/to/receiver.json`。SDK 默认从 PN 固定版本获取，已有原始厂商文件可用 `--pn-sdk-source /path/to/sdk`。给 G1 的所选接口配置接收 IPv4，并把动捕盒的 UDP 目标设为该地址和 `local_port`。默认接收服务不开机启动；通过网页进入 PN Link 后手动启动接收。网络切换可先用 `python3 scripts/switch_pnlink_network.py status --ssid YOUR_SSID` 查看。
+- **BrainCo**使用 `--features pico,brainco` 或 `--features pnlink,brainco`。保留厂商手部 DDS 驱动。默认下载固定 Unitree SDK2，也可选择 `--hand-sdk-root /path/to/compatible/sdk2`。适配器在安装后保持停止，由现场操作者按手部验收流程确认驱动与反馈后启用。
 
-Built on [NVIDIA GEAR SONIC / GR00T-WholeBodyControl](https://github.com/NVlabs/GR00T-WholeBodyControl). The core controller and pretrained models belong to their original authors. Our work focuses on JP5 adaptation, onboard integration, deployment tools and control interfaces. This is a community project, not an official NVIDIA or Unitree release.
+```json
+{
+  "local_ip": "192.0.2.10",
+  "server_ip": "192.0.2.20",
+  "local_port": 8002,
+  "server_port": 8080,
+  "auto_capture": false
+}
+```
 
-> 本项目基于 [NVIDIA GEAR SONIC / GR00T-WholeBodyControl](https://github.com/NVlabs/GR00T-WholeBodyControl)，核心控制器与预训练模型归属原作者。我们的工作集中在 JP5 适配、板载集成、部署工具和操控界面。这是社区项目，并非 NVIDIA 或宇树官方发行版。
+### 日常维护与排查
 
-[Project scope and provenance](docs/PROJECT.md) · [Apache-2.0 source license](LICENSE) · [Citation](CITATION.cff). Model weights and dependencies retain their own terms.
+- 查看空闲服务和日志，使用 `systemctl --user status onboardmimic onboardmimic-console` 及 `journalctl --user -u onboardmimic -u onboardmimic-console -n 80`。首次安装后网页应显示停止，控制器 PID 列表为空。控制、准备姿态和现场动作执行遵循[操作说明](docs/CONTROL_EXTENSIONS_zh.md)。
+- 依赖下载或构建中断后，按终端报告修复对应阶段，再用相同参数重跑。引擎转换和数值检查日志位于 `onboardmimic/backends/sonic/deploy/onboard/logs/`。出现 ROS APT 签名错误时，检查时钟和配置的 ROS 源。发现已有自定义 systemd 服务时，先审查迁移方式，参见[升级说明](docs/UPGRADE_zh.md)。
+- Git 跟踪源码、测试和文档。模型、引擎、厂商二进制、离线包、动作、标定、密钥和本机配置留在各部署环境。[上游 v0.1.0 预编译包](https://github.com/LambdaHumanoid/OnboardMimic/releases/tag/v0.1.0)对应上游旧版功能。本仓库以联网源码构建为主。
 
-> [项目范围与来源](docs/PROJECT.md) · [Apache-2.0 源码许可证](LICENSE) · [引用信息](CITATION.cff)。模型权重和依赖仍遵循各自的条款。
+## 验收范围
 
-## ✍️ Authors / 作者
-
-**By [LambdaHumanoid](https://github.com/LambdaHumanoid) · [Yiming Jiang](https://iridescentjiang.github.io/) · [Yilun Chen](https://yilunchen.com/about/)\* · [codex](https://openai.com/codex/)**
-
-\* Project Leader
-
-Questions, feedback, or a deployment story? Reach Yiming Jiang at [jiangyimingjym@buaa.edu.cn](mailto:jiangyimingjym@buaa.edu.cn).
-
-> 有问题、建议，或想分享部署经历？通过 [jiangyimingjym@buaa.edu.cn](mailto:jiangyimingjym@buaa.edu.cn) 联系 Yiming Jiang。
+- **现有 G1**已有现场功能验证。首发所用的主机源码基线与其 581 个受管文件逐文件比对 SHA-256 一致。
+- **公开版本**包含脱敏配置、联网安装入口及文档。用干净 clone 进行隔离回归，检查安装参数、功能选择、依赖失败重试和空闲服务配置。
+- **待实机复验**是本公开提交在备用同型号 G1 上的首次联网安装、TensorRT 现场构建、重启及空闲状态检查。具体边界见[验证范围](docs/VALIDATION.md)。

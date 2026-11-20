@@ -22,11 +22,11 @@ class OnboardBackend:
                         telemetry={'fresh':False},
                         workflow_error='机载连接未就绪：'+str(exc))
 
-    def command(self, action):
+    def command(self, action, **parameters):
         # Estop must still be attempted when status is unavailable.
         if action != 'estop' and self.status()['mode'] != 'onboard_real':
             raise RuntimeError('机载接口未就绪，未发送运动请求')
-        return self.client.command(action)
+        return self.client.command(action, **parameters)
 
     def control(self, command):
         if (self.expected_robot or self.expected_backend) and not command.get("stop"):
@@ -34,3 +34,13 @@ class OnboardBackend:
                 raise RuntimeError("Runtime robot/backend is unavailable or mismatched")
         return self.client.control(command)
 
+
+    def api(self, path, x=None):
+        if x is None:
+            return self.client.call(path)
+        parameters = dict(x)
+        action = parameters.pop('action', '')
+        return self.client.command(action, path=path, **parameters)
+
+    def authorize(self, parameters):
+        return self.api('/api/operator', dict(parameters, action='authorize'))

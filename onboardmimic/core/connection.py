@@ -1,6 +1,44 @@
 """Systemd connection presentation, independent of robot protocols."""
 import json
 
+
+def prepare_blockers(status):
+    """Explain existing admission flags; never change them or run a guard."""
+    issues=[]
+    def add(code,message,**details):issues.append(dict(code=code,message=message,**details))
+    if not status.get('setup_ready'):
+        add('services',status.get('setup_error') or status.get('setup_message') or '控制服务未连接')
+    if status.get('state') not in ('stopped','error'):
+        add('controller_state','当前控制器状态不允许准备',state=status.get('state'))
+    if status.get('pids'):
+        add('controller_running','控制器进程仍在运行，请先停止控制器')
+    telemetry=status.get('telemetry') or {}
+    if not telemetry.get('fresh'):
+        add('feedback_stale','机器人状态反馈已过期或尚未收到')
+    elif not telemetry.get('valid'):
+        add('feedback_invalid','机器人关节或 IMU 反馈无效')
+    else:
+        details={row['index']:row for row in telemetry.get('fault_details',[])}
+        for index in telemetry.get('faults',[]):
+            fault=details.get(index,{})
+            label=('（'+fault['name']+'）') if fault.get('name') else ''
+            message='电机 %s%s 报告故障'%(index,label)
+            if fault.get('code') is not None:
+                message+='：%s'%fault['code']
+                if fault.get('code_hex'):message+='（'+fault['code_hex']+'）'
+            if fault.get('temperature') is not None:
+                message+='；温度反馈 %s °C'%fault['temperature']
+            add('motor_fault',message,index=index,motorstate=fault.get('code'),
+                **{k:v for k,v in fault.items() if k not in ('index','code')})
+        if telemetry.get('max_speed_rad_s',0)>12.5:
+            add('joint_speed','关节速度超过准备允许范围',max_speed_rad_s=telemetry['max_speed_rad_s'])
+    continuity=status.get('feedback_continuity')
+    if continuity is not None and not continuity.get('ready'):
+        add('feedback_continuity','机器人反馈链路未就绪')
+    if not issues and not status.get('prepare_available'):
+        add('backend','后台暂不允许准备，请查看控制器日志')
+    return issues
+
 class ServiceConnection:
     def __init__(self, connect_unit, bridge_unit, status_path):
         self.connect_unit, self.bridge_unit = connect_unit, bridge_unit
@@ -42,6 +80,7 @@ class ServiceConnection:
         if not connected:
             s['prepare_available'] = False
             s['pose_ready'] = False
+        s['prepare_blockers']=prepare_blockers(s) if not s.get('prepare_available') else []
         return s
 
     def connect(self, runner):

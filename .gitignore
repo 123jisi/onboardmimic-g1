@@ -19,7 +19,7 @@ logs/
 *.pt
 *.so
 *.a
-onboardmimic/backends/sonic/deploy/thirdparty/unitree_sdk2/
+onboardmimic/backends/sonic/deploy/thirdparty/unitree_sdk2
 onboardmimic/backends/sonic/deploy/onboard/*validation*.json
 onboardmimic/backends/sonic/deploy/onboard/*manifest.json
 onboardmimic/backends/sonic/deploy/onboard/benchmark*.json
@@ -35,3 +35,13 @@ onboardmimic/inputs/pico/devices.json
 onboardmimic/backends/sonic/deploy/onboard/runtime/
 
 /var/
+
+onboardmimic/inputs/pnlink/vendor/
+
+# Local downloads, motion sources and generated dependency packages
+*.whl
+*.deb
+*.tgz
+*.nupkg
+*.pkl
+*.pth

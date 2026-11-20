@@ -1,10 +1,14 @@
 # OnboardMimic：G1 首次部署
 
+全新克隆 OnboardMimic G1 后，请先查看 [联网部署入口](SOURCE_BUILD_zh.md)。下文的预编译安装向导对应上游 v0.1.0。
+
 [English](DEPLOYMENT.md) · 简体中文
 
 **安装 → 配置通信 → 打开页面 → 连接服务 → 准备姿态 → 启动 SONIC。**
 
 目标配置：G1 29-DOF 身体、Orin NX 16 GB、JetPack 5 / L4T 35.3.1、CUDA 11.4、TensorRT 8.5.2。以下命令均以机器人普通用户在 `OnboardMimic` 根目录执行，除非另有说明。
+
+候选源码已支持并经现场操作者确认 CSV 与 Kimodo NPZ 真机播放；转换、加载及播放见[本地动作使用手册](MOTION_PLAYBACK_zh.md)。该功能不随旧 v0.1.0 预编译包提供。
 
 ## 1. 完成安装
 

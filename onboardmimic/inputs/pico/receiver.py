@@ -7,8 +7,25 @@ import math
 import os
 from pathlib import Path
 import time
+import uuid
 
 ROLES=('left_wrist','right_wrist','waist','left_ankle','right_ankle')
+
+def controller(value):
+    if not isinstance(value,dict):raise ValueError('controller unavailable')
+    axes=value.get('axes')
+    if (not isinstance(axes,(list,tuple)) or len(axes)!=2 or
+        any(type(v) not in (int,float) or not math.isfinite(v) or abs(v)>1.001 for v in axes)):
+        raise ValueError('invalid controller axes')
+    result={'axes':list(map(float,axes))}
+    for key in ('menu','click','primary','secondary'):
+        if type(value.get(key)) is not bool:raise ValueError('invalid controller button')
+        result[key]=value[key]
+    for key in ('trigger','grip'):
+        v=value.get(key)
+        if type(v) not in (int,float) or not math.isfinite(v) or not 0<=v<=1.001:raise ValueError('invalid controller analog')
+        result[key]=float(v)
+    return result
 
 def pose(value):
     if not isinstance(value,(list,tuple)) or len(value)!=7:raise ValueError('pose must contain xyz + xyzw')
@@ -48,7 +65,7 @@ class Monitor:
         if len(set(assigned))!=len(assigned):raise ValueError('one serial cannot fill two roles')
         self.max_age=float(config.get('max_age_ms',250))/1000
         if not .02<=self.max_age<=1:raise ValueError('invalid freshness threshold')
-        self.streams={name:Stream() for name in ('head','body','motion')}
+        self.streams={name:Stream() for name in ('head','body','motion','left_controller','right_controller')}
     def ingest(self,sample,now):
         for name,stream in self.streams.items():
             try:
@@ -58,6 +75,7 @@ class Monitor:
                 elif name=='body':
                     if len(x['poses'])!=24:raise ValueError('expected 24 body joints')
                     payload=[pose(p) for p in x['poses']]
+                elif name.endswith('_controller'):payload=controller(x)
                 else:
                     serials=x['serials'];poses=x['poses']
                     if len(serials)!=len(poses) or not 1<=len(serials)<=16:raise ValueError('invalid tracker count')
@@ -95,6 +113,15 @@ class SDKReader:
             'head':(s.get_head_timestamp_ns,lambda:dict(pose=s.get_headset_pose())),
             'body':(s.get_body_timestamp_ns,lambda:dict(poses=s.get_body_joints_pose()) if s.is_body_data_available() else {}),
             'motion':(s.get_motion_timestamp_ns,lambda:dict(serials=s.get_motion_tracker_serial_numbers(),poses=s.get_motion_tracker_pose()))}
+        for side,primary,secondary in (('left','X','Y'),('right','A','B')):
+            def get(side=side,primary=primary,secondary=secondary):
+                return dict(axes=getattr(s,'get_'+side+'_axis')(),
+                            menu=getattr(s,'get_'+side+'_menu_button')(),
+                            click=getattr(s,'get_'+side+'_axis_click')(),
+                            primary=getattr(s,'get_'+primary+'_button')(),
+                            secondary=getattr(s,'get_'+secondary+'_button')(),
+                            trigger=getattr(s,'get_'+side+'_trigger')(),grip=getattr(s,'get_'+side+'_grip')())
+            getters[side+'_controller']=(getattr(s,'get_'+side+'_controller_timestamp_ns'),get)
         for name,(stamp,getter) in getters.items():
             try:sample[name]=self.coherent(stamp,getter)
             except Exception:sample[name]=None
@@ -131,11 +158,16 @@ def main():
             write_status(a.status,status)
         else:
             sdk=importlib.import_module('xrobotoolkit_sdk')
-            sdk.init();reader=SDKReader(sdk);start=time.monotonic();last_save=-1
+            sdk.init();reader=SDKReader(sdk);start=time.monotonic();last_save=-1;receiver_id=uuid.uuid4().hex
             while a.duration==0 or time.monotonic()-start<a.duration:
                 now=time.monotonic()-start;sample=reader.read();status=monitor.ingest(sample,now)
+                if any(monitor.streams[name].clock_fault for name in ('body','left_controller','right_controller')):
+                    # A headset/app reconnect may reset source time. Exit the
+                    # receive-only pair so systemd creates a new receiver_id;
+                    # the gateway still requires manual teleop re-entry.
+                    raise RuntimeError('PICO source clock reset; restarting receive-only service')
                 if record:record.write(json.dumps(dict(elapsed_s=now,sample=sample),allow_nan=False)+'\n')
-                status.update(data_source='sdk',receiver_running=True)
+                status.update(data_source='sdk',receiver_running=True,receiver_id=receiver_id)
                 if now-last_save>=.02:write_status(a.status,status);last_save=now
                 time.sleep(.01)
             # On exit don't leave a fresh-looking capture artifact.

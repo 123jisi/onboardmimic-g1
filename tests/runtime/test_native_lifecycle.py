@@ -102,16 +102,16 @@ class PoseModeTest(NativeTest):
         from unittest.mock import Mock
         self.activate();self.now+=.6;self.refresh();self.g.tick()
         self.g.pose_reader=Mock();self.g.pose_reader.snapshot.return_value={'ready':True,'packet':b'pose'}
-        self.g.ingest('g1_debug',{'encoder_mode':0,'play':True})
+        self.g.ingest('g1_debug',{'encoder_mode':0,'motion_name':'planner_motion','play':True})
     def test_switch_keeps_process_and_requires_policy_ack(self):
         self.pose_ready();pid=self.g.process.pid
         self.command('select_pose');self.assertTrue(self.g.mode_pending)
         self.assertEqual(self.g.input_mode,'pose');self.assertEqual(self.g.process.pid,pid)
-        self.now+=.12;self.refresh();self.g.ingest('g1_debug',{'encoder_mode':2,'play':True});self.g.tick()
+        self.now+=.12;self.refresh();self.g.ingest('g1_debug',{'encoder_mode':2,'motion_name':'streamed','play':True});self.g.tick()
         self.assertFalse(self.g.mode_pending);self.assertIsNone(self.g.last_packet)
         with self.assertRaises(ValueError):self.g.request('/api/control',self.packet(move='forward'))
         self.command('select_planner');self.now+=.12;self.refresh()
-        self.g.ingest('g1_debug',{'encoder_mode':0,'play':True});self.g.tick()
+        self.g.ingest('g1_debug',{'encoder_mode':0,'motion_name':'planner_motion','play':True});self.g.tick()
         self.assertFalse(self.g.mode_pending);self.assertEqual(self.g.last_packet['speed'],0)
         self.assertEqual(self.launches,1);self.assertEqual(self.proc.kills,0)
     def test_pico_loss_returns_planner_and_never_auto_resumes(self):

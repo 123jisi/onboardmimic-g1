@@ -40,9 +40,9 @@ class OnboardClient:
     def status(self):
         return self.call('/api/controller')
 
-    def command(self, action):
+    def command(self, action, *, path='/api/controller', **parameters):
         # An emergency stop never waits behind an in-flight movement request.
-        if action == 'estop':
+        if action == 'estop' and path == '/api/controller':
             self.generation += 1
             return self.call('/api/controller', {'action': action})
         with self.lock:
@@ -51,8 +51,9 @@ class OnboardClient:
             if generation != self.generation:
                 raise RuntimeError('请求已被急停取消')
             self.seq += 1
-            return self.call('/api/controller', {'action': action, 'client': self.client,
-                                           'seq': self.seq, 'epoch': s['epoch'], 'ticket': s['ticket']})
+            payload = dict(parameters, action=action, client=self.client,
+                           seq=self.seq, epoch=s['epoch'], ticket=s['ticket'])
+            return self.call(path, payload)
 
     def control(self, command):
         with self.lock:

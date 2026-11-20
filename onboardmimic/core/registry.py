@@ -46,7 +46,7 @@ def _validate_pair(body, controller):
     import math
     if type(body.joint_count) is not int or body.joint_count <= 0:
         raise ValueError('Robot must define a positive joint count')
-    if not controller.capabilities <= {'planner', 'pose'} or 'planner' not in controller.capabilities:
+    if not controller.capabilities <= {'planner', 'pose', 'joint_playback', 'smpl_playback'} or 'planner' not in controller.capabilities:
         raise ValueError('Lifecycle requires the Planner idle/fallback capability')
     if type(controller.max_speed) not in (int,float) or not math.isfinite(controller.max_speed) or controller.max_speed < 0:
         raise ValueError('Backend must define a finite nonnegative speed limit')
@@ -79,7 +79,8 @@ def catalog():
     }
 
 
-INPUTS = {'pico': 'onboardmimic.inputs.pico.adapter:PicoInput'}
+INPUTS = {'pico': 'onboardmimic.inputs.pico.adapter:PicoInput',
+          'pnlink': 'onboardmimic.inputs.pnlink.adapter:PNLinkInput'}
 
 
 def register_input(name, factory):

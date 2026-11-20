@@ -111,7 +111,7 @@ Select PICO in the wizard or pass `--pico` to install mapping dependencies, down
 
 Complete device pairing and full-body tracking calibration in the headset app. Check the console body preview and body-data readiness. For separate tracker-role assignments, put your serial numbers in `onboardmimic/inputs/pico/devices.json`. Personal serial numbers are not distributed with the repository.
 
-The headset and robot must be mutually reachable. Enter the **robot's actual IP** in XRoboToolkit. Reception uses TCP `63901`, not web port `8769`. Hotspot addresses depend on local configuration; do not assume `10.42.0.1`. Receiver status is in `onboardmimic/inputs/pico/runs/live/status.json`; inspect connections with `sudo journalctl -u onboardmimic-pico-receiver.service -n 50`. The receiver only receives tracking; boot does not enter Pose or start SONIC.
+The headset and robot must be mutually reachable. Enter the **robot's actual IP** in XRoboToolkit. Reception uses TCP `63901`, not web port `8769`. Hotspot addresses depend on local configuration. Receiver status is in `onboardmimic/inputs/pico/runs/live/status.json`; inspect connections with `sudo journalctl -u onboardmimic-pico-receiver.service -n 50`. The receiver only receives tracking; boot does not enter Pose or start SONIC.
 
 After preparation and SONIC startup, stop walking, establish a stable stance and align the operator's posture with the robot. Open the PICO Pose tab and click **Enter PICO Pose**. Selecting the tab alone does not take control. `scripts/control.py pose` / `planner` also switch modes. Confirmation comes from `g1_debug` encoder_mode/play; Planner commands are rejected during transitions. Stale tracking requests zero-speed Planner. Reconnection does not automatically re-enter Pose. A mode-confirmation timeout falls back; if Planner fallback also times out, the session controller terminates. Software fallback does not guarantee protection against falls.
 
@@ -150,7 +150,7 @@ cp -n onboardmimic/inputs/pico/devices.example.json onboardmimic/inputs/pico/dev
 nano onboardmimic/inputs/pico/devices.json
 # Download and verify pinned dependencies, then build the image:
 bash onboardmimic/inputs/pico/prepare_container.sh
-docker image inspect onboardmimic-pico-receiver:20261020 --format '{{.Architecture}}'
+docker image inspect onboardmimic-pico-receiver:20261113 --format '{{.Architecture}}'
 ```
 
 Expect `arm64`. Build on the ARM64 robot with network access; on x86, the script only downloads dependencies. Enter your own tracker serials; `cp -n` preserves existing configuration. Tracker count alone does not establish Body-data readiness.

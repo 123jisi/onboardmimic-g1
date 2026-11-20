@@ -70,6 +70,7 @@
 #include "input_interface.hpp"
 #include "zmq_packed_message_subscriber.hpp"
 #include "streamed_motion_merger.hpp"
+#include "stream_epoch_guard.hpp"
 
 /**
  * @class ZMQEndpointInterface
@@ -130,7 +131,7 @@ public:
         const std::string& topic = "pose",
         bool use_conflate = false,
         bool verbose = false
-    ) : InputInterface(), host_(host), port_(port), topic_(topic), verbose_(verbose), is_localhost_(host == LOCALHOST) {
+    ) : InputInterface(), host_(host), port_(port), topic_(topic), verbose_(verbose), is_localhost_(StreamEpochGuard::IsLocalHost(host)) {
         type_ = InputType::NETWORK;
         
         // Set terminal to non-blocking mode (same as SimpleKeyboard)
@@ -316,7 +317,11 @@ public:
 
             // Disable ZMQ streaming and return to reference motion
             use_zmq_stream = false;
-            ResetStreamedMotion(); // Reset motion merger and protocol version
+            {
+                std::lock_guard<std::mutex> lock(data_mutex_);
+                ResetStreamedMotion();
+                has_new_data_ = false;
+            } // Reset wire state atomically with the receive callback
             
             std::cout << "Safety reset: ZMQ streaming disabled, returned to reference motion at frame 0" << std::endl;
         }
@@ -337,8 +342,11 @@ public:
                     reinitialize_heading = true; // reset the heading state
                 }
                 // reset streaming buffers when enabling to avoid mixing with stale data
-                ResetStreamedMotion(); // This also resets protocol version in the merger
-                has_new_data_ = false;
+                {
+                    std::lock_guard<std::mutex> lock(data_mutex_);
+                    ResetStreamedMotion();
+                    has_new_data_ = false;
+                }
             } else {
                 std::cout << "=====================================" << std::endl;
                 std::cout << "ZMQ STREAMING MODE: DISABLED" << std::endl;
@@ -361,8 +369,11 @@ public:
                     }
                 }
                 // reset the streamed motion (also resets protocol version)
-                ResetStreamedMotion();
-                has_new_data_ = false;
+                {
+                    std::lock_guard<std::mutex> lock(data_mutex_);
+                    ResetStreamedMotion();
+                    has_new_data_ = false;
+                }
             }
         }
         if (stop_control) { operator_state.stop = true; }
@@ -616,6 +627,8 @@ private:
     /// Reset the streamed motion buffer, merger state, and protocol version.
     /// Called on construction, when toggling ZMQ mode, and on safety reset.
     void ResetStreamedMotion(bool clear_hand_targets = true) {
+        stream_epoch_.Reset();
+        buffered_buffers_.clear();
         motion_merger_.Reset();
         active_protocol_version_ = -1;  // Reset protocol version tracking
         // Update legacy fields for backward compatibility
@@ -1863,6 +1876,8 @@ private:
         
         std::lock_guard<std::mutex> lock(data_mutex_);
         
+        if (is_localhost_ && !stream_epoch_.Accepts(hdr, bufs)) return;
+
         // Print message received info (only when DEBUG_LOGGING enabled — 高频会刷屏)
         if constexpr (DEBUG_LOGGING) {
             std::cout << "[ZMQEndpointInterface] Received ZMQ message - topic: '" << topic
@@ -1903,6 +1918,7 @@ private:
     // Thread-safe data buffering (written by ZMQ subscriber thread, read by input thread)
     // ------------------------------------------------------------------
     mutable std::mutex data_mutex_;           ///< Guards the fields below.
+    StreamEpochGuard stream_epoch_;
     bool has_new_data_ = false;               ///< True when a new message is waiting to be decoded.
     ZMQPackedMessageSubscriber::DecodedHeader buffered_header_;  ///< Latest JSON header.
     std::vector<std::vector<uint8_t>> buffered_buffers_;         ///< Copied binary field data.

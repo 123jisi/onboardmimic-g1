@@ -4,6 +4,12 @@ OnboardMimic v0.1.0 has completed the full deployment workflow on a physical G1 
 
 > OnboardMimic v0.1.0 已在支持配置的 G1 真机上完成全流程部署验证，涵盖安装、GPU 数值检查、控制台访问、开机就绪、准备姿态、急停和现场运动验收。安装包记录源码提交和逐文件哈希；安装时在目标设备上重新执行软件与推理检查。
 
+## G1 source baseline / G1 源码基线
+
+The onsite operator reported working onboard functions on the existing G1. SHA-256 comparison matched all 581 managed files to the host baseline used to prepare the public release. Existing validation covers Planner, local playback and the optional tracking and hand integrations in the deployed setup. The public source installer and example network settings are release changes.
+
+> 现役 G1 已有现场功能验收，包含 Planner、动作回放、遥操和手部接入。首发前只读检查了部署中的 581 个受管文件，逐项 SHA-256 均与采用的主机源码基线一致。公开版新增的安装入口与通用现场配置需要单独验证。
+
 ## Offline checks / 离线检查
 
 - Core lifecycle, command leases, feedback, failover and adapter contracts.
@@ -24,7 +30,7 @@ Run the [source-guide checks](SOURCE_BUILD.md). No robot is required for them.
 
 ## Target-device acceptance / 目标机验收
 
-Validate the exact package with **G1 29-DOF body, Orin NX 16 GB, L4T 35.3.1, CUDA 11.4 and TensorRT 8.5.2**:
+Fresh online installation, a reboot and idle readiness remain to be verified on a spare unit. Validate the exact checkout with **G1 29-DOF body, Orin NX 16 GB, L4T 35.3.1, CUDA 11.4 and TensorRT 8.5.2**:
 
 1. Clean installation, dependency checks and model/engine numerical validation.
 2. Service migration, desktop/mobile access and receive-only PICO setup.
@@ -32,7 +38,7 @@ Validate the exact package with **G1 29-DOF body, Orin NX 16 GB, L4T 35.3.1, CUD
 4. With onsite support: posture preparation and emergency stop.
 5. Operator acceptance of Planner walking and PICO Pose teleoperation.
 
-> 使用 **G1 29 自由度本体、Orin NX 16 GB、L4T 35.3.1、CUDA 11.4、TensorRT 8.5.2** 核验完整安装、依赖与模型/引擎数值；服务升级、电脑/手机页面和 PICO 接收；开机只就绪不运动；现场支撑下的准备姿态和急停；Planner 行走与 PICO Pose 遥操。
+> 公开提交的首次联网安装、重启和空闲就绪待在备用机实测。使用 **G1 29 自由度本体、Orin NX 16 GB、L4T 35.3.1、CUDA 11.4、TensorRT 8.5.2** 核验完整安装、依赖与模型/引擎数值；服务升级、电脑/手机页面和 PICO 接收；开机只就绪不运动；现场支撑下的准备姿态和急停；Planner 行走与 PICO Pose 遥操。
 
 Record source commit, asset hashes, build reports, platform versions and operator results together. Model/backend attribution and licenses are preserved independently of product naming.
 

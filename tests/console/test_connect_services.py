@@ -1,12 +1,13 @@
 """No ROS or robot: connection ordering, release failures, and incumbent protection."""
 from contextlib import contextmanager
 from pathlib import Path
+import os
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
-from onboardmimic.robots.unitree_g1.connect_services import connect, owner_lock
+from onboardmimic.robots.unitree_g1.connect_services import connect, owner_lock, Operations
 from onboardmimic.robots.unitree_g1.bridge.motion_mode import MotionMode, RpcTimeout, release_mode, validate_motors
 
 
@@ -50,12 +51,38 @@ class ConnectionTest(unittest.TestCase):
         ops.bridge_state.return_value = 'active'
         connect(ops)
         ops.ready.assert_called_once_with()
+        ops.configure.assert_called_once_with()
         ops.release.assert_not_called()
         ops.start_bridge.assert_not_called()
         # An active policy or another bridge makes the physical guard fail.
+        ops.configure.reset_mock()
         ops.ready.side_effect = RuntimeError('controller running')
         with self.assertRaises(RuntimeError): connect(ops)
+        ops.configure.assert_not_called()
         ops.release.assert_not_called()
+
+    def test_reused_bridge_generates_missing_candidate_dds_template(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            template = directory/'installed.xml'
+            xml = '<CycloneDDS xmlns="https://cdds.io/config"><Domain><General><NetworkInterfaceAddress>old0</NetworkInterfaceAddress></General></Domain></CycloneDDS>'
+            template.write_text(xml)
+            state = directory/'candidate/var'
+            with patch('onboardmimic.robots.unitree_g1.connect_services.ROOT', state), \
+                 patch('onboardmimic.robots.unitree_g1.connect_services.detect', return_value='eth1'), \
+                 patch.dict(os.environ, {'CYCLONEDDS_URI': template.as_uri()}):
+                ops = Operations()
+                ops.bridge_state = Mock(return_value='active')
+                ops.ready, ops.report = Mock(), Mock()
+                ops.release, ops.start_bridge = Mock(), Mock()
+                connect(ops)
+                generated = state/'command-dds.xml'
+                self.assertIn('eth1', generated.read_text())
+                self.assertEqual(os.environ['CYCLONEDDS_URI'], generated.as_uri())
+                self.assertEqual(template.read_text(), xml)
+                ops.report.assert_called_once_with('ready', '控制服务已连接')
+                ops.release.assert_not_called()
+                ops.start_bridge.assert_not_called()
 
     def test_lock_preserves_incumbent(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -42,6 +42,9 @@ def connect(ops):
     # Reuse a healthy idle bridge; never restart it or release mode underneath it.
     if ops.bridge_state() == 'active':
         ops.ready()
+        # A reused bridge may run from another deployment. The controller in
+        # this candidate still needs its own DDS template before preparation.
+        ops.configure()
         ops.report('ready', '控制服务已连接')
         return
     with ops.lock():

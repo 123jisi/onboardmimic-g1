@@ -1,0 +1,6 @@
+# Offline import environment only. Do not upgrade the active SONIC environment.
+# JP5/ARM64/Python 3.8: install_smpl_import_jp5.sh provisions CPU Torch in
+# .venv_import using requirements-smpl-import-jp5.txt. No Torch for playback.
+numpy==1.24.4
+scipy==1.10.1
+joblib==1.4.2

@@ -1,4 +1,6 @@
 import copy,json,math,unittest
+import tempfile
+from unittest.mock import Mock,patch as mock_patch
 from pathlib import Path
 from onboardmimic.inputs.pico.receiver import Monitor,SDKReader,ROLES
 from onboardmimic.inputs.pico.patch_sdk import patch
@@ -9,6 +11,21 @@ def frame(stamp=100):
  return dict(head=dict(timestamp_ns=stamp,pose=p),body=dict(timestamp_ns=stamp,poses=[p[:] for _ in range(24)]),motion=dict(timestamp_ns=stamp,serials=['L','R','W','LA','RA'],poses=[p[:] for _ in range(5)]))
 
 class ReceiverTest(unittest.TestCase):
+ def test_sdk_clock_reset_exits_receive_only_and_closes_sdk(self):
+  from onboardmimic.inputs.pico import receiver
+  for stream in ('body','left_controller'):
+   first=frame(200);second=frame(200)
+   if stream=='body':second['body']['timestamp_ns']=100
+   else:
+    controls=dict(axes=[0.,0.],menu=False,click=False,primary=False,secondary=False,trigger=0.,grip=0.)
+    first['left_controller']=dict(timestamp_ns=200,**controls);second['left_controller']=dict(timestamp_ns=100,**controls)
+   sdk=Mock();reader=Mock();reader.read.side_effect=[first,second]
+   with tempfile.TemporaryDirectory() as tmp:
+    c=Path(tmp)/'devices.json';c.write_text(json.dumps(config()))
+    args=['receiver','--source','sdk','--config',str(c),'--status',str(Path(tmp)/'status.json'),'--duration','0']
+    with mock_patch('sys.argv',args),mock_patch.object(receiver.importlib,'import_module',return_value=sdk),mock_patch.object(receiver,'SDKReader',return_value=reader),mock_patch.object(receiver.time,'sleep'):
+     with self.assertRaisesRegex(RuntimeError,'source clock reset'):receiver.main()
+    result=json.loads((Path(tmp)/'status.json').read_text());self.assertFalse(result['receiver_running']);sdk.close.assert_called_once()
  def test_five_serial_roles_not_array_order(self):
   m=Monitor(config());x=frame();x['motion']['serials'].reverse();s=m.ingest(x,0)
   self.assertTrue(s['five_tracker_capture_ready']);self.assertEqual(set(s['role_poses']),set(ROLES));self.assertFalse(s['robot_output_enabled']);self.assertFalse(s['calibrated'])

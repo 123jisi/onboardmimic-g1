@@ -9,7 +9,7 @@ from scripts.install_services import ROOT, quote, require_stopped, render_units,
 
 from onboardmimic.core.registry import select, DEFAULT_ROBOT, DEFAULT_BACKEND
 
-IMAGE = 'onboardmimic-pico-receiver:20261020'
+IMAGE = 'onboardmimic-pico-receiver:20261113'
 NAME = 'onboardmimic-pico-receiver.service'
 
 

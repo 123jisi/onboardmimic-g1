@@ -7,13 +7,151 @@
 <button id="platform-apply" hidden disabled>切换配置</button>
 <span id="platform-status" class="sr-only" role="status">读取配置中…</span><span id="platform-note" class="sr-only">正在读取本体与控制器配置</span>
 </div><div class="header-actions"><div class="language-picker"><label for="language" translate="no">语言 / Language</label><select id="language" aria-label="Language / 语言"><option value="zh-CN">中文</option><option value="en">English</option></select></div><button id="estop" class="danger">急停控制器</button></div></header>
+
+<section id="operator-panel" class="operator-panel"><span id="operator-state" role="status">尚无操作端</span><button id="operator-acquire">取得操作权</button><button id="operator-takeover">显式接管</button><button id="operator-release">释放操作权</button></section>
 <section class="startup"><div class="status-row"><span id="connection">连接中…</span><span id="mode-state">尚未启动</span></div><div class="steps"><button id="connect" disabled>连接服务</button><button id="prepare" disabled>① 准备姿态</button><button id="start" disabled>② 启动控制器</button></div><p>连接服务可能改变当前控制模式，请先可靠支撑机器人。准备姿态会驱动关节，准备与启动分别执行；急停不保证机器人保持站立。</p><div id="message" role="status" aria-live="polite">正在读取机器人状态</div></section>
 <p id="waiting" class="waiting">完成准备并启动控制器后，即可使用 Planner 或 PICO Pose。</p>
+<section class="console-module">
+<div class="card-actions motion-actions" id="motion-active-actions"><span id="motion-active-status" class="card-status"></span><button id="motion-pause">暂停</button><button id="motion-resume">恢复</button><button id="motion-stop">停止播放 · 返回 Planner</button><button id="motion-cancel">取消换播任务</button></div>
+<details id="motion-library" class="motion-library">
+<summary><h2>本地动作库</h2></summary>
+<div class="module-body">
+<div class="motion-actions"><button id="motion-refresh">刷新动作库</button></div>
+<p class="motion-intro">在加载区选择可播放动作，在转换区处理源文件。加载不启动播放，转换不自动加载。</p>
+<p id="catalog-state" class="motion-catalog-state" role="status">等待刷新</p>
+<div class="motion-workspace">
+<div class="motion-card motion-load-card" aria-labelledby="motion-load-title">
+<h3 id="motion-load-title">加载与播放</h3>
+<label for="motion-select"><span class="motion-separate-source">可加载动作</span><span class="motion-combined-source">选择动作</span></label>
+<select id="motion-select" aria-label="选择动作"></select>
+<label id="motion-variant-wrap" hidden>转换结果 <select id="motion-variant" aria-label="转换结果"></select></label>
+<p id="motion-details" class="motion-details" translate="no"></p>
+<div class="motion-actions motion-primary-actions"><button id="motion-load">加载 · 保持 Planner</button><button id="motion-play" class="motion-play-button">播放／切换并播放</button></div>
+<label class="entry-option"><input id="motion-entry-checks" type="checkbox" checked> 首帧检查（速度与倾斜，仅本次）</label>
+<p class="motion-help">关闭首帧检查不会关闭反馈或故障保护；不检查首帧关节位置偏差。暂停持续保持当前参考；停止播放请求零速 Planner，控制器继续运行。</p>
+<p id="motion-source" class="motion-details" role="status"></p>
+<progress id="motion-progress" value="0" max="1" aria-label="播放进度"></progress><p id="motion-position" translate="no"></p>
+<p id="motion-task" class="motion-details" role="status"></p>
+</div>
+<div class="motion-card motion-convert-card" aria-labelledby="motion-convert-title">
+<h3 id="motion-convert-title">转换与导入</h3>
+<label for="source-select" class="motion-separate-source">源文件／待处理文件</label><select id="source-select" class="motion-separate-source" aria-label="源文件／待处理文件"></select>
+<p id="source-details" class="motion-details" translate="no"></p><p id="source-results" class="motion-details" translate="no"></p>
+<div id="motion-name-wrap" class="motion-name-field"><label for="motion-name">转换后的动作名称</label><input id="motion-name" type="text" maxlength="80" autocomplete="off" spellcheck="false" aria-label="转换后的动作名称"><p class="motion-help">扩展名自动添加；再次转换会替换此原文件的已有结果。</p></div>
+<div id="motion-options" class="motion-options" hidden>
+<label id="motion-fps-wrap">源帧率 <input id="motion-fps" type="number" min="0.01" max="1000" step="any" placeholder="FPS"> Hz</label>
+<label id="motion-order-wrap">关节顺序 <select id="motion-order"></select></label>
+<label id="motion-group-wrap">PT 字段组 <select id="motion-group"><option value="auto">auto</option><option value="body_params_global">body_params_global</option><option value="body_params_incam">body_params_incam</option></select></label>
+<label id="motion-root-wrap">根 body 索引 <input id="motion-root" type="number" min="0" step="1" value="0"></label>
+<p class="motion-help">源帧率不是播放速度。PT 必须明确源帧率；AMASS 留空读取文件元数据。CSV 登记要求 50 Hz 和 sonic_reference。</p>
+</div>
+<div class="motion-actions"><button id="motion-convert">转换</button><button id="import-cancel">取消转换</button></div>
+<p id="conversion-note" class="motion-help" role="status"></p><p id="import-task" class="motion-details" role="status"></p>
+</div>
+</div>
+<p id="motion-message" role="status" aria-live="polite"></p>
+</div>
+</details>
+</section>
+<section class="console-module">
+<div class="card-actions motion-actions" id="pnlink-active-actions">
+<span id="pnlink-active-status" class="card-status"></span>
+<button id="pnlink-pause">暂停动捕跟随</button><button id="pnlink-resume">对齐后恢复</button><button id="pnlink-exit">退出动捕 · 返回 Planner</button><button id="pnlink-hand-off">关闭手控</button>
+</div>
+<details id="pnlink-panel" class="motion-library">
+<summary><h2>PN Link · 动捕服全身遥操</h2></summary>
+<div class="module-body">
+<div class="pnlink-overview">
+<section class="pnlink-body-controls">
+<p id="pnlink-state" role="status">等待 PN Link 接收服务</p>
+<div class="motion-actions"><button id="pnlink-receiver-start">启动动捕接收</button><button id="pnlink-receiver-stop">停止动捕接收</button></div>
+<p>开机后先保持空闲；点击启动后开启端侧接收和采集，不会启动机器人或自动校准。</p>
+<div class="motion-actions"><button id="pnlink-capture">开始采集</button><button id="pnlink-stop-capture">停止采集</button><button id="pnlink-calibrate">手动校准</button></div>
+<p>跟随中校准会先返回零速 Planner 并等待站稳；完成后不会自动恢复遥操。校准过程请按浮卡中的姿势与倒计时提示操作。</p>
+<p id="pnlink-command" role="status"></p><p id="pnlink-calibration-state" role="status"></p><p id="pnlink-calibration-result" role="status"></p>
+<label class="entry-option"><input id="pnlink-calibration-check" type="checkbox"> 当前穿戴校准和人体预览已检查</label><button id="pnlink-confirm">确认复用校准</button>
+<label class="entry-option"><input id="pnlink-alignment" type="checkbox"> 已与机器人姿态和朝向对齐</label>
+<div class="motion-actions"><button id="pnlink-enter">进入动捕遥操</button></div>
+<p>暂停保持最后参考，恢复前回到冻结姿态；断流会撤销遥操，恢复数据后须人工重新进入。手机锁屏不终止有效跟随。</p>
+<p id="pnlink-message" role="status" aria-live="polite"></p>
+</section>
+<section class="pnlink-preview-panel" aria-labelledby="pnlink-preview-heading">
+<h3 id="pnlink-preview-heading">身体参考预览</h3>
+<div class="pnlink-preview-stage">
+<canvas id="pnlink-preview" width="440" height="320" aria-label="PN Link 身体参考预览"></canvas>
+<p id="pnlink-preview-status" role="status">等待 PN Link 身体数据</p>
+</div>
+<p>身体参考预览，以骨盆居中。确认当前穿戴、左右方向和动作正常后再进入。</p>
+</section>
+</div>
+<div class="pnlink-hands">
+<details id="pnlink-hand-controls" class="hand-settings">
+<summary><h3>双手跟随</h3></summary>
+<div class="hand-content">
+<p>模式、幅度和控制手重启后保留；只有人工进入动捕遥操后才驱动所选手。修改设置或标定前先退出动捕遥操。</p>
+<div class="motion-actions"><label>控制手 <select id="pnlink-hand-selection"><option data-i18n value="both">双手</option><option data-i18n value="left">左手</option><option data-i18n value="right">右手</option></select></label>
+<label>手部模式 <select id="pnlink-hand-mode"><option data-i18n value="off">关闭</option><option data-i18n value="fingers">逐手指</option><option data-i18n value="grasp">整体张握</option></select></label>
+<label>输出幅度 <input id="pnlink-hand-closure" type="number" min="5" max="100" step="1" value="25"> %</label>
+<button id="pnlink-hand-save">保存手部设置</button></div>
+<p id="pnlink-hands-state" role="status"></p><p id="pnlink-hand-fault" role="status"></p><p id="pnlink-hand-finish" role="status" aria-live="polite"></p>
+<p>穿戴双手手套后，先自然张手并保持约两秒，再握拳并保持约两秒。可一起采样，也可分侧采样和单指补采；两侧各自保存标定。采样与预览不驱动机器人。重新穿戴或重做动捕校准后须重采。</p>
+<div class="motion-actions"><button id="pnlink-hands-open">双手一起采样张手</button><button id="pnlink-hands-closed">双手一起采样握拳</button></div>
+<p id="pnlink-hands-request" role="status" aria-live="polite"></p>
+<p>暂停时双手冻结；主动退出、关闭、急停或切源时，已接管的手限速自然张开。断流或故障时保持当前位置，恢复后须人工重新进入。</p>
+</div>
+</details>
+<details id="pnlink-left-hand-panel">
+<summary><h3>左手标定与预览</h3></summary>
+<div class="hand-content">
+<p id="pnlink-left-hand-state" role="status"></p>
+<div class="motion-actions"><button id="pnlink-left-hand-open">采样张手</button><button id="pnlink-left-hand-closed">采样握拳</button>
+<label>补采手指 <select id="pnlink-left-hand-finger"><option data-i18n value="thumb">拇指</option><option data-i18n value="index">食指</option><option data-i18n value="middle">中指</option><option data-i18n value="ring">无名指</option><option data-i18n value="pinky">小指</option></select></label><button id="pnlink-left-hand-capture-finger">单指补采</button></div>
+<p id="pnlink-left-hand-request" role="status" aria-live="polite"></p>
+<p id="pnlink-left-hand-capture-state" role="status" aria-live="polite"></p>
+<label class="entry-option"><input id="pnlink-left-hand-check" type="checkbox"> 当前手套穿戴及各指目标预览已检查</label><button id="pnlink-left-hand-confirm">确认复用手部标定</button>
+<p id="pnlink-left-hand-preview" role="status"></p>
+<div id="pnlink-left-hand-bars" aria-label="左手映射目标预览"></div>
+</div>
+</details>
+<details id="pnlink-hand-panel">
+<summary><h3>右手标定与预览</h3></summary>
+<div class="hand-content">
+<p id="pnlink-hand-state" role="status"></p>
+<div class="motion-actions"><button id="pnlink-hand-open">采样张手</button><button id="pnlink-hand-closed">采样握拳</button>
+<label>补采手指 <select id="pnlink-hand-finger"><option data-i18n value="thumb">拇指</option><option data-i18n value="index">食指</option><option data-i18n value="middle">中指</option><option data-i18n value="ring">无名指</option><option data-i18n value="pinky">小指</option></select></label><button id="pnlink-hand-capture-finger">单指补采</button></div>
+<p id="pnlink-hand-request" role="status" aria-live="polite"></p>
+<p id="pnlink-hand-capture-state" role="status" aria-live="polite"></p>
+<label class="entry-option"><input id="pnlink-hand-check" type="checkbox"> 当前手套穿戴及各指目标预览已检查</label><button id="pnlink-hand-confirm">确认复用手部标定</button>
+<p id="pnlink-hand-preview" role="status"></p>
+<div id="pnlink-hand-bars" aria-label="右手映射目标预览"></div>
+</div>
+</details>
+</div>
+</div>
+</details>
+</section>
 <section id="workspace" hidden>
 <nav role="tablist" aria-label="控制方式"><button id="planner-tab" role="tab" aria-selected="true" aria-controls="planner-panel">Planner</button><button id="pose-tab" role="tab" aria-selected="false" aria-controls="pose-panel">PICO Pose</button></nav>
 <section id="planner-panel" role="tabpanel" aria-labelledby="planner-tab"><div class="panel-heading"><div><h2>行走与转向</h2><p>按住移动，松开停止。WASD / 方向键行走，Q / E 转向。</p></div><button id="select-planner" disabled>切回 Planner</button></div>
 <label class="speed">目标速度 <input id="speed" type="number" min="0" max="5" step="0.1" value="0.5" inputmode="decimal"> m/s <small>只设置目标速度，实际速度由策略与环境决定。</small></label>
 <div class="controls"><div class="dpad"><button class="up" data-move="forward" disabled>↑<span>前进</span><kbd>W</kbd></button><button class="left" data-move="left" disabled>←<span>左移</span><kbd>A</kbd></button><button id="stop" class="stop">■<span>停止行走</span><kbd>Space / Esc</kbd></button><button class="right" data-move="right" disabled>→<span>右移</span><kbd>D</kbd></button><button class="down" data-move="backward" disabled>↓<span>后退</span><kbd>S</kbd></button></div><div class="turns"><button data-turn="left" disabled>↶<span>左转 Q</span></button><button data-turn="right" disabled>↷<span>右转 E</span></button></div></div><p class="hint">空格 / Esc 停止运动，控制器保持运行。PICO 接管时 Planner 输入不可用。</p></section>
-<section id="pose-panel" role="tabpanel" aria-labelledby="pose-tab" hidden><div class="panel-heading"><div><h2>PICO 全身遥操</h2><p id="pico-state">PICO 为可选功能，未安装也能使用 Planner。</p></div><button id="select-pose" disabled>进入 PICO Pose</button></div><p>进入前先停止并站稳，让操作者姿态与机器人对齐。断流会请求返回 Planner；重连不会自动接管。</p><div id="input-mode-panel"></div><button id="pose-stop">停止遥操 · 返回 Planner</button></section>
+<section id="pose-panel" role="tabpanel" aria-labelledby="pose-tab" hidden><div class="panel-heading"><div><h2>PICO 全身遥操</h2><p id="pico-state">PICO 为可选功能，未安装也能使用 Planner。</p></div><button id="select-pose" disabled>进入 PICO 模式</button></div><p>进入前先停止并站稳，让操作者姿态与机器人对齐。断流会请求返回 Planner；重连不会自动接管。</p><div class="pico-controls"><label for="pico-mode">PICO 模式</label><select id="pico-mode"><option data-i18n value="pose">全身跟随</option><option data-i18n value="planner">摇杆行走</option><option data-i18n value="frozen">冻结上身行走</option><option data-i18n value="vr3pt">摇杆行走＋三点跟随</option></select>
+<label class="entry-option"><input id="pico-alignment" type="checkbox"> 已在头显完成标定，并与机器人姿态对齐</label>
+<p id="pico-session-state" role="status"></p><p id="pico-hands-state" role="status" hidden></p></div>
+<p>进入后先松开全部按键并回中摇杆。A＋X：全身／行走；B＋Y：全身／冻结上身；左摇杆按下：三点模式；A＋B／X＋Y：步态加／减。步态初始为 0（IDLE）。</p>
+<p>全身模式按住左菜单暂停，恢复前回到暂停姿态。A＋B＋X＋Y 停止控制器；重新准备与启动请使用网页。手机锁屏不终止有效遥操。</p>
+<div id="input-mode-panel"></div><button id="pose-stop">停止遥操 · 返回 Planner</button></section>
 </section><footer><a href="/remote">手机控制台 / Mobile</a> · OnboardMimic v0.1.0 · 人形机器人的板载 S0 平台</footer>
-</main><script src="/i18n.js"></script><script src="/platform.js"></script><script src="/app.js"></script><script src="/input-preview.js"></script></body></html>
+<section id="pnlink-calibration-card" class="calibration-card" aria-labelledby="pnlink-calibration-title" hidden>
+<h2 id="pnlink-calibration-title">动捕服校准</h2>
+<p id="pnlink-calibration-phase" class="calibration-phase" role="status"></p>
+<p id="pnlink-calibration-pose" class="calibration-pose" hidden></p>
+<p id="pnlink-calibration-countdown" class="calibration-countdown" hidden></p>
+<div id="pnlink-calibration-meter" class="calibration-meter" hidden>
+<label for="pnlink-calibration-progress">姿势采样进度</label>
+<span id="pnlink-calibration-percent"></span>
+<progress id="pnlink-calibration-progress" max="100" value="0"></progress>
+</div>
+<button id="pnlink-calibration-dismiss" hidden>关闭提示</button>
+</section>
+</main><script src="/i18n.js"></script><script src="/platform.js"></script><script src="/motions.js"></script><script src="/app.js"></script><script src="/pnlink.js"></script><script src="/input-preview.js"></script></body></html>

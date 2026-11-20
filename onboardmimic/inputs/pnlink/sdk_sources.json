@@ -1,0 +1,15 @@
+{
+  "upstream": "https://github.com/pnmocap/mocapapi_python",
+  "upstream_revision": "e2ac01812d8823689063b1faab8041b46b8b4834",
+  "sdk_files": {
+    "mocap_api.py": "05ebb470efa1c13499cb57073dfa14d175cb02b0c3ed31aa71551eacda7a3511",
+    "lib/librobotapi_arm64.so": "8c69886cd16e628904ba96496e2bf9fec41f3ac7817a07366f3c09e985992244",
+    "lib/librobotapi_x86-64.so": "29b27a4dd4d8cc4d823d03e7c0a5809a1ee8b135c3e2c82205cc95b408d2efc6"
+  },
+  "mapping_reference": {
+    "gear_sonic/scripts/mocap_live_play_smplx.py": "f8bb9c3e138ec0477469c109e0c7ca7a282c22bc9aed253f7890bea91551af4a",
+    "gear_sonic/scripts/publish_smpl_kimodo.py": "ef83544a6fa0afef096c8d13b6bf9940ae976e741995241aadd1c407a60985b2"
+  },
+  "license": "SONIC-derived math uses existing backends/sonic/pico/licenses/SONIC_LICENSE. SDK assets are supplied by PN; preserve vendor terms, do not infer a new license.",
+  "upstream_binding_sha256": "d6fb43fa36a6514d208b353619d88fb351d9fab120fadd1e938c183e24270c32"
+}

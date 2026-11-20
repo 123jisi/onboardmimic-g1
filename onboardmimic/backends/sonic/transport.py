@@ -14,12 +14,96 @@ class Transport:
         self.error = None
         self.stage = 'initializing'
         self.shutdown_reason = None
+        self.last_pose_key = None
+        self.hand_blocked_session = None
         self.thread = threading.Thread(target=self.run, daemon=True)
+
+    def messages(self):
+        messages=self.body_messages()
+        link=self.gateway.pico_hand_link
+        if link:
+            # Optional hand failures must never escape into the body transport
+            # watchdog. Keep the body reference already produced above.
+            candidate=self.gateway.pnlink_hands
+            pn=candidate if candidate and (self.gateway.pnlink_owned() or candidate.finishing()) else None
+            session=((pn.finish_task['session']+'-finish' if pn.finishing() else pn.session) if pn else getattr(self.gateway.pico_session,'hand_session',None)) or 'inactive'
+            if self.hand_blocked_session!=session:
+                self.hand_blocked_session=None
+                self.gateway.pico_hand_error=''
+            if self.hand_blocked_session is None:
+                try:
+                    hand=pn.message(self.gateway,link) if pn else link.message(self.gateway)
+                    if hand is not None:
+                        if not isinstance(hand,bytes) or not hand.startswith(b'pico_hands'):
+                            raise ValueError('invalid optional hand packet')
+                        messages.append(hand)
+                except Exception as exc:
+                    self.hand_blocked_session=session
+                    if pn:
+                        pn.fail('手部输出异常，已停用手部；本体继续运行，重新进入可重试')
+                    else:
+                        self.gateway.pico_hand_error='手部输出异常，已停用手部；本体继续运行，重新进入 PICO 可重试'
+                    runtime_event('pico_hand_output_disabled',error=type(exc).__name__)
+        return messages
+
+    def body_messages(self):
+        """Called under gateway.lock; this is the sole control/reference mux."""
+        from .wire import build_command_message, build_planner_message
+        g = self.gateway
+        idle = lambda: build_planner_message(0, [0,0,0], [1,0,0], speed=0)
+        if g.start_pending:
+            self.last_pose_key = None
+            return [idle(), build_command_message(True, False, True)]
+        if g.phase != 'active':
+            self.last_pose_key = None
+            return []
+        if g.pnlink_owned():
+            packet=g.pnlink_reference(g.clock())
+            if packet is None:return [idle(),build_command_message(True,False,True)]
+            return [packet]+([build_command_message(True,False,False)] if g.mode_pending else [])
+        if g.pico_owned():
+            reference=g.pico_reference(g.clock())
+            # A failed reference may have revoked the session; publish only the
+            # explicit fallback, never the previous command or cached pose.
+            if reference is None:
+                return [idle(),build_command_message(True,False,True)]
+            planner=isinstance(reference,dict)
+            if planner:
+                packet=reference
+                message=build_planner_message(packet['mode'],packet['movement_direction'],packet['facing_direction'],speed=packet['speed'],
+                    **{k:packet[k] for k in ('height','upper_body_position','upper_body_velocity','vr_3pt_position','vr_3pt_orientation') if k in packet})
+            else:message=reference
+            return [message]+([build_command_message(True,False,planner)] if g.mode_pending else [])
+        if g.input_mode != 'pose':
+            self.last_pose_key = None
+        if g.input_mode in ('joint_playback', 'smpl_playback'):
+            packet = g.playback_packet()
+            # Finishing can change the selected mode during packet production.
+            if g.input_mode == 'planner':
+                return [idle(), build_command_message(True, False, True)]
+            messages = [build_command_message(True, False, False)] if g.mode_pending else []
+            return messages + ([packet] if packet else [])
+        if g.input_mode == 'pose' or g.mode_pending:
+            is_planner = g.input_mode == 'planner'
+            messages = [build_command_message(True, False, is_planner)] if g.mode_pending else []
+            if is_planner:
+                return [idle()] + messages
+            snap = g.pose_reader.snapshot()
+            key = (g.epoch, snap.get('packet'))
+            if snap['ready'] and key != self.last_pose_key:
+                messages.append(snap['packet'])
+                self.last_pose_key = key
+            return messages
+        packet = g.last_packet
+        if packet:
+            return [build_planner_message(
+                packet['mode'], packet['movement_direction'], packet['facing_direction'], speed=packet['speed'],
+                **{k:packet[k] for k in ('height','upper_body_position','upper_body_velocity') if k in packet})]
+        return []
 
     def run(self):
         import msgpack
         import zmq
-        from .wire import build_command_message, build_planner_message
         ctx = zmq.Context()
         sub = ctx.socket(zmq.SUB)
         pub = ctx.socket(zmq.PUB)
@@ -34,7 +118,6 @@ class Transport:
             feedback.setsockopt(zmq.SUBSCRIBE, b'g1_debug')
             feedback.setsockopt(zmq.CONFLATE, 1)
             feedback.connect('tcp://127.0.0.1:%d' % (self.planner_port+1))
-            last_pose_key = None
             self.ready.set()
             while not self.stop.is_set():
                 begin = time.monotonic()
@@ -60,25 +143,8 @@ class Transport:
                 self.stage = 'gateway_tick'
                 with self.gateway.lock:
                     self.gateway.tick()
-                    packet = self.gateway.last_packet
-                    if self.gateway.start_pending:
-                        pub.send(build_planner_message(0,[0,0,0],[1,0,0],speed=0))
-                        pub.send(build_command_message(True,False,True))
-                    elif self.gateway.phase == 'active' and (self.gateway.input_mode == 'pose' or self.gateway.mode_pending):
-                        is_planner = self.gateway.input_mode == 'planner'
-                        if self.gateway.mode_pending:
-                            pub.send(build_command_message(True,False,is_planner))
-                        if is_planner:
-                            pub.send(build_planner_message(0,[0,0,0],[1,0,0],speed=0))
-                        else:
-                            snap = self.gateway.pose_reader.snapshot()
-                            key = (self.gateway.epoch, snap.get('packet'))
-                            if snap['ready'] and key != last_pose_key:
-                                pub.send(snap['packet']); last_pose_key = key
-                    elif packet and self.gateway.phase == 'active':
-                        pub.send(build_planner_message(
-                            packet['mode'],packet['movement_direction'],packet['facing_direction'],speed=packet['speed'],
-                            **{k:packet[k] for k in ('height','upper_body_position','upper_body_velocity') if k in packet}))
+                    for message in self.messages():
+                        pub.send(message)
                 self.last_tick = time.monotonic()
                 self.stage = 'cadence_wait'
                 wait_event(self.stop, max(0, .02-(self.last_tick-begin)))

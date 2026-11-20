@@ -78,11 +78,11 @@
   "src/g1/g1_deploy_onnx_ref/tests/lowcmd_transport_probe.cpp": "d76fc5b391ea6834e3bcbb84c5aa380bae82e3293e3e617aef9b98f415c792ac",
   "src/g1/g1_deploy_onnx_ref/include/input_interface/zmq_packed_message_subscriber.hpp": "35d5142bfce39c0632e96dbb6f17316a0d200f044c62f1f7e9edabfa351452c4",
   "src/g1/g1_deploy_onnx_ref/include/input_interface/gamepad_manager.hpp": "97bfda596b897b85c7e3c91690d5371b147d0fdeb48a31f539b5885998a5fa3e",
-  "src/g1/g1_deploy_onnx_ref/include/input_interface/zmq_endpoint_interface.hpp": "9683a3c53a0a01dd7980a0f172228dfc7cdf25c7339f7451d599bda1b71dfaa1",
+  "src/g1/g1_deploy_onnx_ref/include/input_interface/zmq_endpoint_interface.hpp": "fc468a6c99d4dad19c5de51d0465f836fa71fce7d890ec2183600edaa4e99999",
   "src/g1/g1_deploy_onnx_ref/include/input_interface/streamed_motion_merger.hpp": "35f95a51e12910b7fd4a77c6ae12677181030526e393ee365509359ebbf79287",
   "src/g1/g1_deploy_onnx_ref/include/input_interface/ros2_input_handler.hpp": "f70260704225f5607ddb3790a03e86665e8dda3bd26b72cffbfd7b822e809a28",
   "src/g1/g1_deploy_onnx_ref/include/input_interface/input_interface.hpp": "d052abd0f91910a3d6ebfa8ee4eb65dcce175d8ca03ff551b7603c453db9d0a4",
-  "src/g1/g1_deploy_onnx_ref/include/input_interface/zmq_manager.hpp": "61c589bcdc0b43ff5bab106b8c6ff8ec4911cbaebd97bfa432d80a75b8cee00d",
+  "src/g1/g1_deploy_onnx_ref/include/input_interface/zmq_manager.hpp": "11e4f57e0020baa1e3ba2761543c41f3ee00d33535e51a98e3814263f5292b02",
   "src/g1/g1_deploy_onnx_ref/include/input_interface/gamepad.hpp": "6e49b1faa4bcb63d5deadc319139eb2f9b3b6f366499f139fc070fbfc939d21b",
   "src/g1/g1_deploy_onnx_ref/include/input_interface/input_command.hpp": "7a2654d8d1f284f43ff4c0d4e8a714237d85025b786481dc62765ef14c86975c",
   "src/g1/g1_deploy_onnx_ref/include/input_interface/keyboard_handler.hpp": "08d8f1273798bac23be50b1f4ce9ea76f8d7eb1c1227b14c7c3110b9328ebb48",
@@ -90,5 +90,6 @@
   "src/g1/g1_deploy_onnx_ref/include/output_interface/ros2_output_handler.hpp": "6186f250cb618ea614d7a9e85db48fce41b84b304d867a5c64fdf5041b04b970",
   "src/g1/g1_deploy_onnx_ref/include/output_interface/zmq_output_handler.hpp": "a75a74713d1258b2fd15784649b824cd9f3e87cae0cb2d40ca0c228bb784e4da",
   "src/g1/g1_deploy_onnx_ref/include/output_interface/output_interface.hpp": "953ee9aface08fbbba7cd502593dca6f7d3679164044d70b963469330cb58f90",
-  "src/g1/freq_test/src/freq_test.cpp": "7b6610ebfaa4d588e6f7a50872b6d45b3def89867cdb88265bceeabf6bb7fc44"
+  "src/g1/freq_test/src/freq_test.cpp": "7b6610ebfaa4d588e6f7a50872b6d45b3def89867cdb88265bceeabf6bb7fc44",
+  "src/g1/g1_deploy_onnx_ref/include/input_interface/stream_epoch_guard.hpp": "626bfacb88335df2d1b64097d6b0bf4088ff0dec1ea7cf25bdd7f03492681cb4"
 }

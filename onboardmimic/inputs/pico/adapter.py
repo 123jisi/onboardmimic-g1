@@ -12,6 +12,10 @@ class PicoInput(TrackingInput):
 
     def __init__(self):
         self.runs = Path(__file__).resolve().parent/'runs'
+        self.status_file=self.runs/'live/status.json'
+
+    def status_path(self):
+        return self.status_file if self.status_file is not None else max(self.runs.glob('*/status.json'),key=lambda p:p.stat().st_mtime)
 
     def preview_script(self):
         return Path(__file__).resolve().parent/"static/pico-skeleton.js"
@@ -20,7 +24,7 @@ class PicoInput(TrackingInput):
         result = dict(connected=False, tracker_count=0, calibrated=False,
                       ready=False, reason='全身 Pose 就绪状态以机载网关反馈为准')
         try:
-            path = max(self.runs.glob('*/status.json'), key=lambda p: p.stat().st_mtime)
+            path = self.status_path()
             data = json.loads(path.read_text())
             age = time.time() - float(data.get('updated_at_unix', 0))
             live = data.get('data_source') == 'sdk' and data.get('receiver_running') is True and 0 <= age <= 2
@@ -40,7 +44,7 @@ class PicoInput(TrackingInput):
                     frame='PICO Unity / meters / xyzw',robot_output_enabled=False,
                     reason='等待 PICO 全身姿态',body_hz=0,head_hz=0)
         try:
-            path=max(self.runs.glob('*/status.json'),key=lambda p:p.stat().st_mtime)
+            path=self.status_path()
             data=json.loads(path.read_text());age=time.time()-float(data.get('updated_at_unix',0))
             live=data.get('data_source')=='sdk' and data.get('receiver_running') is True and 0<=age<=2
             result['receiver_running']=live

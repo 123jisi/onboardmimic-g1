@@ -6,5 +6,18 @@
     "scripts/human_data/processing/wrist_contract.py": "d8586ac5da3191881419964bcae181d28a303fbaa8be1526b82fa999b81039bf",
     "gear_sonic/data/human/human_joints_info.pkl": "4de0bae69caf31e8829a2d3e8adecd887f29115af60a0b8d59237dfbfea1c975"
   },
-  "mapping": "SMPL body FK + canonical wrist contract; NumPy CPU port"
+  "mapping": "SMPL body FK + canonical wrist contract; NumPy CPU port",
+  "phase5_reference": {
+    "gear_sonic/scripts/pico_manager_thread_server.py": "049a81bc0d52a66599420336087937168ff8beea487c881271969353196ce1a2",
+    "gear_sonic/utils/teleop/vis/vr3pt_pose_visualizer.py": "f223df8e7e1863e37a423aa80619e0ea42a67f1569df9c1d6e2487af08c4d3a6",
+    "gear_sonic/data/robot_model/model_data/g1/g1_29dof_with_hand.urdf": "3dcb9c361753f464fa1f0238cdf800af842909628fd153733075607881c12d62",
+    "gear_sonic/data/robot_model/supplemental_info/g1/g1_supplemental_info.py": "d9b07ca20228442f806e9bb85cd082b6952bffee9ce1fcec53288f01a09b49da"
+  },
+  "phase5_mapping": "CPU body/wrists, controller modes, NumPy G1 FK and three-point calibration; host parity in teleop_phase5_parity.json; source license licenses/SONIC_LICENSE",
+  "pico_hands_reference": {
+    "gear_sonic/scripts/pico_manager_thread_server.py": "049a81bc0d52a66599420336087937168ff8beea487c881271969353196ce1a2",
+    "gear_sonic/utils/teleop/solver/hand/g1_gripper_ik_solver.py": "1819bc011d022e2e9567e5209bc8c5b4f3f328c1275ab5cfeb0a8e0a2e9b9c25",
+    "host_setup/g1_hands/control.py": "5ea14e6f84a6ac5f18d8f086509317d756e518d1cf57eeb790eb8f576044b7e5"
+  },
+  "pico_hands_mapping": "Host trigger > 0.5 binary intent; verified BrainCo six-channel grasp presets via dedicated onboard DDS hand adapter; no Dex3 signed joint reuse."
 }

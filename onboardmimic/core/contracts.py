@@ -101,6 +101,21 @@ class S0Backend(ABC):
     def pose_reader(self, input_id, path):
         raise ValueError('Backend does not support input: '+input_id)
 
+    def pico_hand_link(self, robot, path):
+        raise ValueError('Backend does not support PICO hand control')
+
+    def file_player(self):
+        """Optional in-process reference producer; discovery never calls this."""
+        raise ValueError('Backend does not support file playback')
+
+    def load_clip(self, path, **options):
+        """Read/validate local data without connecting a transport or hardware."""
+        raise ValueError('Backend does not support file playback')
+
+    def validate_first_frame(self, clip, telemetry, latest):
+        """Backend/robot ordering and orientation admission; raises on mismatch."""
+        raise ValueError('Backend does not define file admission')
+
 
 class TrackingInput(ABC):
     id: str

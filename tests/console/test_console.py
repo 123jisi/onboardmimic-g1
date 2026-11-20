@@ -95,6 +95,16 @@ class ConsoleTest(unittest.TestCase):
   self.backend.command.return_value={'ok':True}
   self.post('/api/controller',{'action':'prepare_pose'}).close()
   self.backend.command.assert_called_once_with('prepare_pose')
+ def test_connected_motor_fault_remains_blocked_and_get_explains_it(self):
+  self.unit_states()
+  self.backend.status.return_value.update(prepare_available=False,telemetry=dict(
+   fresh=True,valid=True,faults=[5],max_speed_rad_s=0.,fault_details=[dict(
+    index=5,name='左踝横滚',code=512,code_hex='0x200',temperature=[42,42])]))
+  with urlopen(self.url+'/api/controller') as response:s=json.load(response)
+  self.assertTrue(s['setup_ready']);self.assertFalse(s['prepare_available'])
+  self.assertIn('0x200',s['prepare_blockers'][0]['message'])
+  self.backend.command.assert_not_called();self.backend.control.assert_not_called()
+  self.assertTrue(all(call.args[0][2]=='show' for call in self.runner.call_args_list))
  def test_replaced_bridge_does_not_reuse_previous_success(self):
   self.unit_states(pid=456)
   self.c.connect_status.write_text(json.dumps({'phase':'ready','bridge_pid':123}))

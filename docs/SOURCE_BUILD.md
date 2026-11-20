@@ -2,15 +2,24 @@
 
 English · [简体中文](SOURCE_BUILD_zh.md)
 
-> For the supported G1 / JP5 configuration, start with the [v0.1.0 prebuilt packages](PREBUILT.md). This guide is for modifying or rebuilding the controller and engines.
+For a fresh supported G1, clone this repository and run the online installer. See the [README](../README.md) for optional features. The [upstream v0.1.0 prebuilt package](PREBUILT.md) is a separate older release.
 
 Use the supported G1 / JetPack 5 platform described in the [deployment guide](DEPLOYMENT.md). Run native and model builds sequentially. Installation and offline validation do not start robot control.
 
 We kept the familiar `onboardmimic/backends/sonic/deploy/` layout so you can inspect, modify, and rebuild the adaptation.
 
 ```bash
-git clone --branch main https://github.com/LambdaHumanoid/OnboardMimic.git OnboardMimic
+git clone --branch main https://github.com/123jisi/onboardmimic-g1.git OnboardMimic
 cd OnboardMimic
+python3 scripts/setup_g1_online.py --check
+python3 scripts/setup_g1_online.py
+```
+
+### Manual build
+
+Use these commands to build selected components yourself.
+
+```bash
 bash install_scripts/install_orin.sh
 .venv/bin/python download_from_hf.py
 bash onboardmimic/backends/sonic/deploy/build_orin.sh
@@ -20,8 +29,8 @@ export UNITREE_ROS_SETUP=/path/to/workspace/with/unitree_hg/install/setup.bash
 bash onboardmimic/robots/unitree_g1/native_bridge/build.sh
 bash onboardmimic/backends/sonic/deploy/onboard/build_models.sh
 PYTHON=.venv/bin/python bash scripts/test.sh --core
-# Optional PICO mapping and full test suite:
-.venv/bin/python -m pip install -r onboardmimic/backends/sonic/pico/requirements.txt
+# Dependencies for the full test suite:
+.venv/bin/python -m pip install -r onboardmimic/backends/sonic/pico/requirements.txt joblib==1.4.2
 PYTHON=.venv/bin/python bash scripts/test.sh --all
 ```
 
@@ -47,7 +56,7 @@ This repository provides onboard controller deployment and runtime integration. 
 python3 -m venv .venv-test
 # This project targets Python 3.8; use a pip release that supports it.
 .venv-test/bin/python -m pip install --upgrade pip==25.0.1
-.venv-test/bin/pip install -r requirements.txt -r onboardmimic/backends/sonic/pico/requirements.txt
+.venv-test/bin/pip install -r requirements.txt -r onboardmimic/backends/sonic/pico/requirements.txt joblib==1.4.2
 PYTHON=.venv-test/bin/python bash scripts/test.sh
 ```
 

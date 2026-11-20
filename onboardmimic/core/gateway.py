@@ -148,6 +148,8 @@ def make_server(gateway, token, port=0):
         def do_GET(self):
             if not self.authorized():
                 return
+            if self.path == '/api/motions' and getattr(gateway, 'library', None):
+                return self.respond(gateway.library.snapshot())
             if self.path != '/api/controller':
                 return self.respond({'error': 'not found'}, 404)
             self.respond(gateway.status())

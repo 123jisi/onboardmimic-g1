@@ -76,12 +76,25 @@ def run():
     parser.add_argument('--physical', action='store_true')
     parser.add_argument('--token-file', type=Path, required=True)
     parser.add_argument('--pose-status', type=Path, help='Optional live PICO receiver status.json')
+    parser.add_argument('--pnlink-status', type=Path, help='Optional local PN Link snapshot')
+    parser.add_argument('--pnlink-socket', type=Path, help='PN Link receiver Unix command socket')
+    parser.add_argument('--pico-hands-status', type=Path, help='Optional local BrainCo hand adapter status')
+    playback = parser.add_mutually_exclusive_group()
+    playback.add_argument('--no-playback', action='store_true', help='Disable the local playback library')
+    playback.add_argument('--motion-root', type=Path, default=ROOT/'var/motions', help='Local CSV/SMPL-cache library; never loads or plays automatically')
+    parser.add_argument('--motion-source-root', type=Path, help='Parent of gmr/smpl/kimodo source directories; default motion-root parent')
     parser.add_argument('--default-speed', type=float, default=.5, help='Default Planner target speed in m/s (0..5)')
     parser.add_argument('--robot', default=DEFAULT_ROBOT)
     parser.add_argument('--backend', default=DEFAULT_BACKEND)
     parser.add_argument('--input', default='pico')
     args = parser.parse_args()
     robot, backend = select(args.robot,args.backend)
+    if bool(args.pnlink_status) != bool(args.pnlink_socket):
+        parser.error('PN Link requires both --pnlink-status and --pnlink-socket')
+    if args.pnlink_status and 'pnlink' not in backend.supported_inputs:
+        parser.error('Selected backend does not support PN Link')
+    if args.pose_status and args.input != 'pico':
+        parser.error('--pose-status is the legacy PICO option; use --pnlink-status/--pnlink-socket for PN Link')
     if args.pose_status:
         select_input(args.input)
         if args.input not in backend.supported_inputs:
@@ -124,11 +137,30 @@ def run():
                         physical=True, robot=robot, backend=backend)
     from .commands import PlannerLease
     gateway.lease = PlannerLease(args.default_speed, max_speed=backend.max_speed)
+    if args.motion_root and not args.no_playback:
+        if args.motion_root == ROOT/'var/motions':
+            args.motion_root.mkdir(parents=True, exist_ok=True)
+        gateway.enable_playback(args.motion_root)
+        if args.motion_source_root and gateway.library:
+            gateway.library.source_root = args.motion_source_root.resolve()
     # Optional adapters are never implicitly enabled by installing this package.
-    if args.pose_status:
+    if args.pose_status or args.pnlink_status:
         os.environ['OPENBLAS_NUM_THREADS'] = '1'
+    if args.pose_status:
         gateway.pose_reader = backend.pose_reader(args.input,args.pose_status)
+        if args.input=='pico' and hasattr(backend,"pico_session"):
+            gateway.pico_session=backend.pico_session(gateway.pose_reader)
         gateway.pose_reader.thread.start()
+    if args.pnlink_status:
+        reader=backend.pose_reader('pnlink', args.pnlink_status)
+        gateway.pnlink_session=backend.pnlink_session(reader)
+        gateway.pnlink_socket=args.pnlink_socket
+        gateway.pnlink_hands=backend.pnlink_hands(reader,args.pnlink_status.parent/'hand-settings.json')
+        reader.thread.start()
+    if args.pico_hands_status:
+        if not (args.pose_status or args.pnlink_status):
+            parser.error('Hands require --pose-status or --pnlink-status')
+        gateway.pico_hand_link=backend.pico_hand_link(robot,args.pico_hands_status)
     transport = backend.transport(gateway,robot)
     transport.thread.start()
     if not wait_event(transport.ready, 5) or transport.error:
@@ -140,7 +172,14 @@ def run():
         phase = gateway.phase
         transport.stop.set()
         with gateway.lock: gateway.halt()
+        if gateway.conversion_cancel:
+            gateway.conversion_cancel.set()
+        if gateway.conversion_thread:
+            join_thread(gateway.conversion_thread, 2)
         runtime_event('stop_signal',signal=signal.Signals(signum).name,phase=phase)
+        if gateway.pnlink_session:
+            gateway.pnlink_session.reader.stop.set()
+            join_thread(gateway.pnlink_session.reader.thread, 1)
         if gateway.pose_reader:
             gateway.pose_reader.stop.set()
             join_thread(gateway.pose_reader.thread, 1)
@@ -158,11 +197,18 @@ def run():
         logging.getLogger('runtime_audit').exception('Runtime failed')
         raise
     finally:
+        if gateway.pnlink_session:
+            gateway.pnlink_session.reader.stop.set()
+            join_thread(gateway.pnlink_session.reader.thread, 1)
         if gateway.pose_reader:
             gateway.pose_reader.stop.set()
             join_thread(gateway.pose_reader.thread, 1)
         transport.stop.set()
         with gateway.lock: gateway.halt()
+        if gateway.conversion_cancel:
+            gateway.conversion_cancel.set()
+        if gateway.conversion_thread:
+            join_thread(gateway.conversion_thread, 2)
         joined=join_thread(transport.thread, 4)
         server.server_close()
         owner_lock.close()

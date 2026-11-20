@@ -9,8 +9,8 @@ m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
 class NetworkTests(unittest.TestCase):
     def test_direct_route_selects_actual_nic_and_rejects_wifi_gateway(self):
-        addresses=[dict(ifname='eth1',flags=['UP'],addr_info=[dict(family='inet',local='192.168.123.164')])]
-        route=dict(dev='eth1',prefsrc='192.168.123.164')
+        addresses=[dict(ifname='eth1',flags=['UP'],addr_info=[dict(family='inet',local='192.168.123.80')])]
+        route=dict(dev='eth1',prefsrc='192.168.123.80')
         self.assertEqual(m.choose(addresses,[route]),'eth1')
         for routes in ([],[dict(route,gateway='192.168.123.1')],[dict(route,dev='wlan0')],[dict(route,prefsrc='10.0.0.2')]):
             with self.subTest(routes=routes),self.assertRaises(ValueError):m.choose(addresses,routes)

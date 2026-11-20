@@ -14,7 +14,9 @@ from onboardmimic.core.client import OnboardClient
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('action',nargs='?',default='status',choices=['status','prepare','start','estop','stop','forward','backward','turn-left','turn-right','left','right','pose','planner'])
+    p.add_argument('action',nargs='?',default='status',choices=['status','prepare','start','estop','stop','forward','backward','turn-left','turn-right','left','right','pose','planner','pnlink','pnlink-pause','pnlink-resume','pnlink-confirm','pnlink-capture','pnlink-stop-capture','pnlink-calibrate'])
+    p.add_argument('--aligned',action='store_true',help='Confirm headset calibration and operator/robot alignment for PICO entry')
+    p.add_argument('--pico-mode',choices=('pose','planner','frozen','vr3pt'),default='pose')
     p.add_argument('--url',default='http://127.0.0.1:18921')
     p.add_argument('--token-file',type=Path,default=Path.home()/'.config/onboardmimic/http.token')
     p.add_argument('--duration',type=float,default=1.,help='Movement duration, 0 < seconds <= 10')
@@ -25,7 +27,16 @@ def main():
     if a.token_file.stat().st_mode & 0o077:p.error('token file must be private (0600)')
     client=OnboardClient(a.url,a.token_file.read_text().strip())
     if a.action=='status':print(json.dumps(client.status(),ensure_ascii=False,indent=2));return
+    if a.action.startswith('pnlink'):
+        if a.action=='pnlink':result=client.command('select_pnlink',alignment_confirmed=a.aligned)
+        elif a.action in ('pnlink-pause','pnlink-resume'):result=client.command(a.action.split('-')[1]+'_pnlink')
+        else:
+            action={'pnlink-confirm':'confirm_calibration','pnlink-capture':'start_capture','pnlink-stop-capture':'stop_capture','pnlink-calibrate':'calibrate'}[a.action]
+            result=client.command(action,path='/api/inputs/pnlink',calibration_confirmed=a.aligned)
+        print(json.dumps(result,ensure_ascii=False,indent=2));return
     if a.action in ('prepare','start','estop','pose','planner'):
+        if a.action=='pose':
+            print(json.dumps(client.command('select_pose',alignment_confirmed=a.aligned,pico_mode=a.pico_mode),ensure_ascii=False,indent=2));return
         print(json.dumps(client.command({'prepare':'prepare_pose','start':'start_policy','estop':'estop','pose':'select_pose','planner':'select_planner'}[a.action]),ensure_ascii=False,indent=2));return
     ident='mobile-cli-'+secrets.token_hex(8);seq=0;owned=False
     def send(**payload):

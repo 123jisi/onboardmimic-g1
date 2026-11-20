@@ -103,6 +103,7 @@ hostname -I
 
 ## PICO 全身 Pose（可选，默认关闭）
 
+
 在统一安装向导中选择 PICO，或加 `--pico`，会安装映射依赖、下载并构建镜像、生成设备配置和接收服务，然后启动只接收服务。Docker 操作通过 sudo 执行，不要求先加入 docker 组或重新登录；若未安装 Docker，按提示执行 `sudo apt-get install -y docker.io` 后重试。完成后直接进入下方[头显连接与使用](#pico-headset)，无需重复构建镜像或安装服务。
 
 <a id="pico-headset"></a>
@@ -111,7 +112,7 @@ hostname -I
 
 完成头显应用的设备配对与全身追踪标定，检查网页人体预览和身体数据就绪状态。若使用独立追踪器角色配置，在 `onboardmimic/inputs/pico/devices.json` 中填写自己的序列号；个人设备序列号不随仓库分发。
 
-头显和机器人须处于可互通的网络，在 XRoboToolkit 中填写**机器人的实际 IP**；接收端口为 TCP `63901`，不是网页端口 `8769`。热点地址由本机网络配置决定，不假设每台机器都是 `10.42.0.1`。接收状态位于 `onboardmimic/inputs/pico/runs/live/status.json`，可用 `sudo journalctl -u onboardmimic-pico-receiver.service -n 50` 检查连接。接收服务只接收人体追踪，开机不会自动进入 Pose 或启动 SONIC。
+头显和机器人须处于可互通的网络，在 XRoboToolkit 中填写**机器人的实际 IP**；接收端口为 TCP `63901`，不是网页端口 `8769`。热点地址由本机网络配置决定。接收状态位于 `onboardmimic/inputs/pico/runs/live/status.json`，可用 `sudo journalctl -u onboardmimic-pico-receiver.service -n 50` 检查连接。接收服务只接收人体追踪，开机不会自动进入 Pose 或启动 SONIC。
 
 完成准备姿态并启动 SONIC 后，先停止行走并站稳、让操作者姿态与机器人对齐，再打开 PICO Pose 标签，点击 **进入 PICO Pose** 按钮。切换标签本身不接管控制。也支持 `scripts/control.py pose` / `planner`。模式状态以 `g1_debug` 的 encoder_mode/play 确认为准，切换期间不接受 Planner 指令。数据过期请求零速 Planner，重连不自动进入 Pose；模式确认超时回退，Planner 回退再次超时则终止本会话控制器。软件回退不保证机器人不会跌倒。
 
@@ -152,7 +153,7 @@ cp -n onboardmimic/inputs/pico/devices.example.json onboardmimic/inputs/pico/dev
 nano onboardmimic/inputs/pico/devices.json
 # 一条命令下载、校验固定版本依赖并构建镜像：
 bash onboardmimic/inputs/pico/prepare_container.sh
-docker image inspect onboardmimic-pico-receiver:20261020 --format '{{.Architecture}}'
+docker image inspect onboardmimic-pico-receiver:20261113 --format '{{.Architecture}}'
 ```
 
 最后应显示 `arm64`。构建须在机器人 ARM64 上完成，需要网络；x86 电脑上脚本只下载依赖，不会生成 ARM64 镜像。角色序列号填写自己的追踪器，不随仓库发布；`cp -n` 保留已有设备配置。独立追踪器数量不等于 Body 数据就绪。
